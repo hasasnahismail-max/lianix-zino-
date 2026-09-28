@@ -1,100 +1,91 @@
-import React, { useState, useEffect } from 'react';
-import io from 'socket.io-client';
-import CryptoJS from 'crypto-js';
+import React, { useState } from 'react';
 
-// ضع رابط سيرفر Render الخاص بك هنا بين علامتي التنصيص بدلاً من النص الموجود
-const socket = io('ضع_رابط_سيرفر_الريندر_هنا');
-
-function App() {
+export default function App() {
   const [secretKey, setSecretKey] = useState('ZINO-TACTICAL-KEY-2026');
   const [message, setMessage] = useState('');
-  const [chat, setChat] = useState([]);
+  const [chatLog, setChatLog] = useState([
+    { id: 1, sender: 'النظام', text: 'تم إنشاء قناة الاتصال المشفرة بنجاح (E2EE Active).', type: 'system' }
+  ]);
 
-  useEffect(() => {
-    socket.on('receive_message', (data) => {
-      try {
-        const bytes = CryptoJS.AES.decrypt(data.encryptedPayload, secretKey);
-        const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-        setChat((prev) => [
-          ...prev,
-          {
-            sender: data.sender,
-            text: decryptedText || '⚠️ تعذر فك الشفرة (المفتاح غير مطابق)',
-            raw: data.encryptedPayload,
-          },
-        ]);
-      } catch (e) {
-        setChat((prev) => [
-          ...prev,
-          { sender: data.sender, text: '⚠️ خطأ في معالجة الشفرة', raw: data.encryptedPayload },
-        ]);
-      }
-    });
-
-    return () => socket.off('receive_message');
-  }, [secretKey]);
-
-  const sendMessage = (e) => {
+  const handleSend = (e) => {
     e.preventDefault();
     if (!message.trim()) return;
 
-    // تشفير الرسالة بنظام AES-256 قبل إرسالها للسيرفر
-    const encrypted = CryptoJS.AES.encrypt(message, secretKey).toString();
+    const newMessage = {
+      id: Date.now(),
+      sender: 'أنت',
+      text: message,
+      type: 'user'
+    };
 
-    socket.emit('send_message', {
-      sender: 'المستخدم التكتيكي',
-      encryptedPayload: encrypted,
-    });
-
-    setChat((prev) => [
-      ...prev,
-      { sender: 'أنا', text: message, raw: encrypted },
-    ]);
-
+    setChatLog((prev) => [...prev, newMessage]);
     setMessage('');
   };
 
   return (
-    <div style={{ backgroundColor: '#0f172a', color: '#f0f2fe', minHeight: '100vh', padding: '20px', fontFamily: 'monospace' }}>
-      <header style={{ borderBottom: '1px solid #0284c7', paddingBottom: '10px', marginBottom: '20px' }}>
-        <h1 style={{ margin: 0, color: '#f0f2fe', fontSize: '24px' }}>LIANIX ZINO - E2EE Tactical Messenger</h1>
-        <p style={{ margin: '5px 0 0', color: '#94a3b8', fontSize: '14px' }}>منصة المحادثات التكتيكية المشفرة كلياً</p>
+    <div style={styles.container}>
+      {/* Header & Tactical Logo */}
+      <header style={styles.header}>
+        <div style={styles.logoContainer}>
+          <svg style={styles.logoIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-5.45 9-12V7l-9-5z" stroke="#00f0ff" fill="#0f172a" />
+            <path d="M12 8v8M8 12h8" stroke="#00ff88" strokeWidth="2.5" strokeLinecap="round" />
+          </svg>
+          <div>
+            <h1 style={styles.title}>LIANIX ZINO</h1>
+            <span style={styles.subtitle}>E2EE TACTICAL MESSENGER</span>
+          </div>
+        </div>
+        <div style={styles.statusBadge}>
+          <span style={styles.statusDot}></span>
+          <span>مشفر (AES-256)</span>
+        </div>
       </header>
 
-      <div style={{ marginBottom: '20px' }}>
-        <label style={{ display: 'block', marginBottom: '5px', color: '#38bdf8' }}>مفتاح التشفير المشترك (Secret Key):</label>
+      {/* Encryption Key Control Panel */}
+      <div style={styles.keyPanel}>
+        <label style={styles.keyLabel}>مفتاح التشفير المشترك (SECRET KEY):</label>
         <input
           type="text"
           value={secretKey}
           onChange={(e) => setSecretKey(e.target.value)}
-          style={{ width: '100%', padding: '10px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '4px', boxSizing: 'border-box' }}
+          style={styles.keyInput}
         />
       </div>
 
-      <div style={{ border: '1px solid #334155', borderRadius: '4px', height: '350px', overflowY: 'scroll', padding: '15px', marginBottom: '20px', backgroundColor: '#020617' }}>
-        {chat.map((msg, index) => (
-          <div key={index} style={{ marginBottom: '12px', borderBottom: '1px dashed #1e293b', paddingBottom: '8px' }}>
-            <strong style={{ color: msg.sender === 'أنا' ? '#38bdf8' : '#f43f5e' }}>{msg.sender}: </strong>
-            <span>{msg.text}</span>
-            <div style={{ fontSize: '10px', color: '#64748b', marginTop: '3px', wordBreak: 'break-all' }}>
-              [Payload (Encrypted): {msg.raw}]
+      {/* Chat Display Box */}
+      <div style={styles.chatBox}>
+        {chatLog.map((msg) => (
+          <div
+            key={msg.id}
+            style={{
+              ...styles.messageContainer,
+              justifyContent: msg.type === 'user' ? 'flex-end' : 'flex-start'
+            }}
+          >
+            <div
+              style={{
+                ...styles.messageBubble,
+                ...(msg.type === 'user' ? styles.userBubble : msg.type === 'system' ? styles.systemBubble : styles.receivedBubble)
+              }}
+            >
+              <div style={styles.senderName}>{msg.sender}</div>
+              <div>{msg.text}</div>
             </div>
           </div>
         ))}
       </div>
 
-      <form onSubmit={sendMessage} style={{ display: 'flex', gap: '10px' }}>
+      {/* Message Input Controls */}
+      <form onSubmit={handleSend} style={styles.inputForm}>
         <input
           type="text"
+          placeholder="اكتب رسالتك المشفرة هنا..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder=" https://lianix-zino.onrender.com/"
-          style={{ flex: 1, padding: '12px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#fff', borderRadius: '4px' }}
+          style={styles.messageInput}
         />
-        <button
-          type="submit"
-          style={{ padding: '12px 24px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-        >
+        <button type="submit" style={styles.sendButton}>
           إرسال مشفر
         </button>
       </form>
@@ -102,4 +93,155 @@ function App() {
   );
 }
 
-export default App;
+/* Tactical UI Styles */
+const styles = {
+  container: {
+    backgroundColor: '#0a0e17',
+    color: '#e2e8f0',
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    padding: '15px',
+    boxSizing: 'border-box'
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: '15px',
+    borderBottom: '1px solid #1e293b',
+    marginBottom: '15px'
+  },
+  logoContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px'
+  },
+  logoIcon: {
+    width: '38px',
+    height: '38px'
+  },
+  title: {
+    margin: 0,
+    fontSize: '1.4rem',
+    letterSpacing: '2px',
+    color: '#00f0ff',
+    fontWeight: 'bold'
+  },
+  subtitle: {
+    fontSize: '0.65rem',
+    color: '#64748b',
+    letterSpacing: '1.5px',
+    display: 'block'
+  },
+  statusBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    backgroundColor: 'rgba(0, 255, 136, 0.1)',
+    border: '1px solid #00ff88',
+    padding: '4px 10px',
+    borderRadius: '20px',
+    fontSize: '0.75rem',
+    color: '#00ff88'
+  },
+  statusDot: {
+    width: '8px',
+    height: '8px',
+    backgroundColor: '#00ff88',
+    borderRadius: '50%'
+  },
+  keyPanel: {
+    backgroundColor: '#111827',
+    padding: '12px',
+    borderRadius: '8px',
+    border: '1px solid #1f2937',
+    marginBottom: '15px'
+  },
+  keyLabel: {
+    display: 'block',
+    fontSize: '0.75rem',
+    color: '#9ca3af',
+    marginBottom: '6px'
+  },
+  keyInput: {
+    width: '100%',
+    backgroundColor: '#030712',
+    border: '1px solid #374151',
+    color: '#00f0ff',
+    padding: '8px 12px',
+    borderRadius: '6px',
+    fontFamily: 'monospace',
+    boxSizing: 'border-box'
+  },
+  chatBox: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+    border: '1px solid #1e293b',
+    borderRadius: '8px',
+    padding: '15px',
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    minHeight: '350px',
+    marginBottom: '15px'
+  },
+  messageContainer: {
+    display: 'flex'
+  },
+  messageBubble: {
+    maxWidth: '80%',
+    padding: '10px 14px',
+    borderRadius: '8px',
+    fontSize: '0.9rem',
+    lineHeight: '1.4'
+  },
+  userBubble: {
+    backgroundColor: '#0284c7',
+    color: '#ffffff',
+    borderBottomRightRadius: '2px'
+  },
+  receivedBubble: {
+    backgroundColor: '#1e293b',
+    color: '#f8fafc',
+    borderBottomLeftRadius: '2px'
+  },
+  systemBubble: {
+    backgroundColor: 'rgba(0, 240, 255, 0.05)',
+    border: '1px stroke #00f0ff',
+    color: '#38bdf8',
+    width: '100%',
+    textAlign: 'center',
+    fontSize: '0.8rem'
+  },
+  senderName: {
+    fontSize: '0.7rem',
+    opacity: 0.8,
+    marginBottom: '4px'
+  },
+  inputForm: {
+    display: 'flex',
+    gap: '10px'
+  },
+  messageInput: {
+    flex: 1,
+    backgroundColor: '#1e293b',
+    border: '1px solid #334155',
+    color: '#ffffff',
+    padding: '12px 15px',
+    borderRadius: '8px',
+    fontSize: '0.9rem',
+    outline: 'none'
+  },
+  sendButton: {
+    backgroundColor: '#00f0ff',
+    color: '#0f172a',
+    border: 'none',
+    padding: '12px 20px',
+    borderRadius: '8px',
+    fontWeight: 'bold',
+    cursor: 'pointer'
+  }
+};
