@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import CryptoJS from 'crypto-js';
 
-// الاتصال الديناميكي بالنطاق الذي يخدم الصفحة حالياً
 const socket = io({
   transports: ['polling', 'websocket'],
   autoConnect: true
@@ -15,7 +14,10 @@ export default function App() {
   const [isConnected, setIsConnected] = useState(socket.connected);
 
   useEffect(() => {
-    // تحديث الحالة فوراً إذا كان السوكيت متصلاً مسبقاً
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
     if (socket.connected) {
       setIsConnected(true);
     }
@@ -26,18 +28,30 @@ export default function App() {
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
 
+    // استقبال تأكيد السيرفر وعرض الرسالة للطرفين
     socket.on('receive_message', (data) => {
       try {
         const bytes = CryptoJS.AES.decrypt(data.encryptedPayload, secretKey);
         const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+        const textToShow = decryptedText || '⚠️ مفتاح التشفير غير مطابق';
+        const isMe = data.senderId === socket.id;
+
         setChat((prev) => [
           ...prev,
-          { sender: 'صديقك', text: decryptedText || '⚠️ مفتاح التشفير غير مطابق' }
+          { sender: isMe ? 'أنت' : 'صديقك', text: textToShow }
         ]);
+
+        if (!isMe && "Notification" in window && Notification.permission === "granted") {
+          new Notification("رسالة جديدة من ليانكس 💬", {
+            body: textToShow,
+            dir: "rtl"
+          });
+        }
       } catch (e) {
+        const isMe = data.senderId === socket.id;
         setChat((prev) => [
           ...prev,
-          { sender: 'صديقك', text: '⚠️ مفتاح التشفير غير مطابق' }
+          { sender: isMe ? 'أنت' : 'صديقك', text: '⚠️ مفتاح التشفير غير مطابق' }
         ]);
       }
     });
@@ -57,11 +71,9 @@ export default function App() {
       const encrypted = CryptoJS.AES.encrypt(message, secretKey).toString();
 
       socket.emit('send_message', {
-        sender: 'أنت',
         encryptedPayload: encrypted
       });
 
-      setChat((prev) => [...prev, { sender: 'أنت', text: message }]);
       setMessage('');
     } catch (err) {
       alert('حدث خطأ أثناء الإرسال');
@@ -127,4 +139,4 @@ export default function App() {
       </form>
     </div>
   );
-}
+          }
