@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import CryptoJS from 'crypto-js';
 
-// الاتصال بالسيرفر
+// الاتصال بالسيرفر المحلي الموحد تلقائياً
 const socket = io();
 
 export default function App() {
@@ -11,17 +11,24 @@ export default function App() {
   const [chat, setChat] = useState([]);
 
   useEffect(() => {
-    // استقبال الرسالة المباشرة من الصديق
+    // استقبال الرسائل القادمة من الطرف الآخر
     socket.on('receive_message', (data) => {
       try {
         const bytes = CryptoJS.AES.decrypt(data.encryptedPayload, secretKey);
         const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+
         setChat((prev) => [
           ...prev,
-          { sender: 'صديقك', text: decryptedText || '⚠️ مفتاح التشفير غير مطابق' }
+          { 
+            sender: 'صديقك', 
+            text: decryptedText || '⚠️ مفتاح التشفير غير مطابق' 
+          }
         ]);
       } catch (e) {
-        setChat((prev) => [...prev, { sender: 'صديقك', text: '⚠️ خطأ في التشفير' }]);
+        setChat((prev) => [
+          ...prev, 
+          { sender: 'صديقك', text: '⚠️ مفتاح التشفير غير مطابق' }
+        ]);
       }
     });
 
@@ -32,99 +39,64 @@ export default function App() {
     e.preventDefault();
     if (!message.trim()) return;
 
-    // تشفير الرسالة بـ AES
+    // 1. تشفير الرسالة وتحويلها إلى نص صريح (.toString)
     const encrypted = CryptoJS.AES.encrypt(message, secretKey).toString();
 
-    // إرسال عبر Socket
+    // 2. إرسال الرسالة عبر السوكيت للطرف الآخر
     socket.emit('send_message', {
       sender: 'أنت',
       encryptedPayload: encrypted
     });
 
-    // إضافة الرسالة لسجلك الشخصي
+    // 3. إظهار الرسالة فوراً في شاشة المرسل
     setChat((prev) => [...prev, { sender: 'أنت', text: message }]);
     setMessage('');
   };
 
   return (
-    <div style={styles.container}>
-      {/* اسم التطبيق بعد التعديل */}
-      <h2 style={styles.title}>ليانكس</h2>
-      
-      {/* إعداد مفتاح التشفير */}
-      <div style={styles.box}>
-        <label style={styles.label}>مفتاح التشفير (يجب أن يكون متطابقاً عند الطرفين):</label>
-        <input
-          type="text"
-          value={secretKey}
+    <div style={{ maxWidth: '400px', margin: '20px auto', padding: '20px', fontFamily: 'sans-serif', textAlign: 'right', direction: 'rtl' }}>
+      <h2>ليانكس</h2>
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ fontSize: '12px', fontWeight: 'bold' }}>مفتاح التشفير (يجب أن يكون متطابقاً عند الطرفين):</label>
+        <input 
+          type="text" 
+          value={secretKey} 
           onChange={(e) => setSecretKey(e.target.value)}
-          style={styles.input}
+          style={{ width: '100%', padding: '8px', marginTop: '5px', boxSizing: 'border-box' }}
         />
       </div>
 
-      {/* صندوق عرض الرسائل */}
-      <div style={styles.chatBox}>
+      <div style={{ border: '1px solid #ccc', height: '300px', overflowY: 'scroll', padding: '10px', borderRadius: '8px', marginBottom: '15px', background: '#f9f9f9' }}>
         {chat.length === 0 ? (
           <p style={{ color: '#888', textAlign: 'center' }}>لا توجد رسائل بعد...</p>
         ) : (
-          chat.map((msg, index) => (
-            <div
-              key={index}
-              style={{
-                ...styles.msg,
-                alignSelf: msg.sender === 'أنت' ? 'flex-end' : 'flex-start',
-                backgroundColor: msg.sender === 'أنت' ? '#007bff' : '#28a745'
-              }}
-            >
-              <strong>{msg.sender}: </strong> {msg.text}
+          chat.map((item, index) => (
+            <div key={index} style={{ marginBottom: '10px', textAlign: item.sender === 'أنت' ? 'left' : 'right' }}>
+              <span style={{ fontSize: '11px', color: '#666', display: 'block' }}>{item.sender}</span>
+              <span style={{ 
+                display: 'inline-block', 
+                padding: '8px 12px', 
+                borderRadius: '12px', 
+                background: item.sender === 'أنت' ? '#007bff' : '#e9ecef', 
+                color: item.sender === 'أنت' ? '#fff' : '#000' 
+              }}>
+                {item.text}
+              </span>
             </div>
           ))
         )}
       </div>
 
-      {/* نموذج الإرسال */}
-      <form onSubmit={handleSend} style={styles.form}>
-        <input
-          type="text"
-          placeholder="اكتب رسالة هنا..."
-          value={message}
+      <form onSubmit={handleSend} style={{ display: 'flex', gap: '10px' }}>
+        <input 
+          type="text" 
+          placeholder="اكتب رسالة هنا..." 
+          value={message} 
           onChange={(e) => setMessage(e.target.value)}
-          style={styles.inputMsg}
+          style={{ flex: 1, padding: '10px', borderRadius: '4px', border: '1px solid #ccc' }}
         />
-        <button type="submit" style={styles.btn}>إرسال</button>
+        <button type="submit" style={{ padding: '10px 20px', background: '#000', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>إرسال</button>
       </form>
     </div>
   );
-}
-
-const styles = {
-  container: {
-    padding: '20px',
-    maxWidth: '500px',
-    margin: '0 auto',
-    fontFamily: 'sans-serif',
-    backgroundColor: '#f4f6f8',
-    minHeight: '100vh',
-    boxSizing: 'border-box'
-  },
-  title: { textAlign: 'center', color: '#111', fontSize: '24px', fontWeight: 'bold' },
-  box: { marginBottom: '15px' },
-  label: { display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: 'bold' },
-  input: { width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' },
-  chatBox: {
-    backgroundColor: '#fff',
-    border: '1px solid #ddd',
-    borderRadius: '8px',
-    height: '300px',
-    overflowY: 'auto',
-    padding: '10px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-    marginBottom: '15px'
-  },
-  msg: { color: '#fff', padding: '8px 12px', borderRadius: '15px', maxWidth: '80%', fontSize: '14px' },
-  form: { display: 'flex', gap: '10px' },
-  inputMsg: { flex: 1, padding: '12px', borderRadius: '5px', border: '1px solid #ccc' },
-  btn: { padding: '12px 20px', backgroundColor: '#111', color: '#fff', border: 'none', borderRadius: '5px', fontWeight: 'bold' }
-};
+            }
