@@ -2,64 +2,99 @@ import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import CryptoJS from 'crypto-js';
 
-const socket = io('https://lianix-zino-1.onrender.com');
+// الاتصال المباشر بمصدر السيرفر الذي يخدم الصفحة تلقائياً
+const socket = io();
 
 export default function App() {
   const [secretKey, setSecretKey] = useState('ZINO2026');
   const [message, setMessage] = useState('');
   const [chat, setChat] = useState([]);
+  const [isConnected, setIsConnected] = useState(socket.connected);
 
   useEffect(() => {
+    // متابعة حالة الاتصال الحية بالسيرفر
+    socket.on('connect', () => setIsConnected(true));
+    socket.on('disconnect', () => setIsConnected(false));
+
+    // استقبال الرسائل القادمة وفك تشفيرها
     socket.on('receive_message', (data) => {
       try {
         const bytes = CryptoJS.AES.decrypt(data.encryptedPayload, secretKey);
         const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+
         setChat((prev) => [
           ...prev,
-          { sender: 'صديقك', text: decryptedText || '⚠️ مفتاح التشفير غير مطابق' }
+          { 
+            sender: 'صديقك', 
+            text: decryptedText || '⚠️ مفتاح التشفير غير مطابق' 
+          }
         ]);
       } catch (e) {
         setChat((prev) => [
-          ...prev,
+          ...prev, 
           { sender: 'صديقك', text: '⚠️ مفتاح التشفير غير مطابق' }
         ]);
       }
     });
 
-    return () => socket.off('receive_message');
+    return () => {
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('receive_message');
+    };
   }, [secretKey]);
 
   const handleSend = (e) => {
     e.preventDefault();
     if (!message.trim()) return;
 
-    const encrypted = CryptoJS.AES.encrypt(message, secretKey).toString();
+    try {
+      // 1. تشفير النص
+      const encrypted = CryptoJS.AES.encrypt(message, secretKey).toString();
 
-    socket.emit('send_message', {
-      sender: 'أنت',
-      encryptedPayload: encrypted
-    });
+      // 2. إرسال الرسالة عبر السوكيت
+      socket.emit('send_message', {
+        sender: 'أنت',
+        encryptedPayload: encrypted
+      });
 
-    setChat((prev) => [...prev, { sender: 'أنت', text: message }]);
-    setMessage('');
+      // 3. عرض الرسالة في شاشتك فوراً
+      setChat((prev) => [...prev, { sender: 'أنت', text: message }]);
+      setMessage('');
+    } catch (err) {
+      alert('حدث خطأ في عملية التشفير أو الإرسال');
+    }
   };
 
   return (
     <div style={{ maxWidth: '400px', margin: '20px auto', padding: '20px', fontFamily: 'sans-serif', textAlign: 'right', direction: 'rtl' }}>
-      <h2>ليانكس</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <h2 style={{ margin: 0 }}>ليانكس</h2>
+        <span style={{ 
+          fontSize: '11px', 
+          padding: '4px 8px', 
+          borderRadius: '12px', 
+          background: isConnected ? '#e6fffa' : '#ffebe9', 
+          color: isConnected ? '#0e9f6e' : '#e53e3e', 
+          fontWeight: 'bold' 
+        }}>
+          {isConnected ? '🟢 متصل بالسيرفر' : '🔴 غير متصل'}
+        </span>
+      </div>
+
       <div style={{ marginBottom: '15px' }}>
         <label style={{ fontSize: '12px', fontWeight: 'bold' }}>مفتاح التشفير (يجب أن يكون متطابقاً عند الطرفين):</label>
         <input 
           type="text" 
           value={secretKey} 
           onChange={(e) => setSecretKey(e.target.value)}
-          style={{ width: '100%', padding: '8px', marginTop: '5px', boxSizing: 'border-box' }}
+          style={{ width: '100%', padding: '8px', marginTop: '5px', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}
         />
       </div>
 
       <div style={{ border: '1px solid #ccc', height: '300px', overflowY: 'scroll', padding: '10px', borderRadius: '8px', marginBottom: '15px', background: '#f9f9f9' }}>
         {chat.length === 0 ? (
-          <p style={{ color: '#888', textAlign: 'center' }}>لا توجد رسائل بعد...</p>
+          <p style={{ color: '#888', textAlign: 'center', marginTop: '120px' }}>لا توجد رسائل بعد...</p>
         ) : (
           chat.map((item, index) => (
             <div key={index} style={{ marginBottom: '10px', textAlign: item.sender === 'أنت' ? 'left' : 'right' }}>
@@ -69,7 +104,7 @@ export default function App() {
                 padding: '8px 12px', 
                 borderRadius: '12px', 
                 background: item.sender === 'أنت' ? '#007bff' : '#e9ecef', 
-                color: item.sender === 'أ统' ? '#fff' : '#000' 
+                color: item.sender === 'أنت' ? '#fff' : '#000' 
               }}>
                 {item.text}
               </span>
@@ -90,4 +125,4 @@ export default function App() {
       </form>
     </div>
   );
-                                      }
+                                                                                   }
