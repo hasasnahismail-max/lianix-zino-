@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import CryptoJS from 'crypto-js';
 
-// الاتصال التلقائي بنفس دومين المنصة الحالي دون الحاجة لربط ثابت قد يكون خاطئاً
+// الاتصال التلقائي بنفس دومين المنصة الحالي
 const socket = io({
   transports: ['websocket', 'polling'],
   secure: true,
@@ -315,7 +315,7 @@ const styles = {
   media: { maxWidth: '100%', borderRadius: '6px', maxHeight: '180px', marginTop: '4px' },
   time: { fontSize: '9px', color: '#94A3B8', display: 'block', textAlign: 'left', marginTop: '2px' },
   talkingBox: { display: 'flex', alignItems: 'center', gap: '6px', background: '#0F172A', padding: '4px 10px', borderRadius: '16px', width: 'fit-content', border: '1px solid #00F0FF', margin: '6px 0' },
-  inputBar: {, display: 'flex', gap: '6px', padding: '10px 12px', background: '#0F172A', alignItems: 'center', borderTop: '1px solid #1E293B' },
+  inputBar: { display: 'flex', gap: '6px', padding: '10px 12px', background: '#0F172A', alignItems: 'center', borderTop: '1px solid #1E293B' },
   attach: { background: '#1E293B', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '15px', border: '1px solid #334155' },
   mainInput: { flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #334155', background: '#020617', color: '#F8FAFC', outline: 'none', fontSize: '13px' },
   sendBtn: { padding: '10px 16px', background: '#2563EB', color: '#FFF', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }
