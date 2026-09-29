@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import CryptoJS from 'crypto-js';
 
-// الاتصال بالسيرفر المحلي الموحد تلقائياً
-const socket = io();
+const socket = io('https://lianix-zino-1.onrender.com');
 
 export default function App() {
   const [secretKey, setSecretKey] = useState('ZINO2026');
@@ -11,22 +10,17 @@ export default function App() {
   const [chat, setChat] = useState([]);
 
   useEffect(() => {
-    // استقبال الرسائل القادمة من الطرف الآخر
     socket.on('receive_message', (data) => {
       try {
         const bytes = CryptoJS.AES.decrypt(data.encryptedPayload, secretKey);
         const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-
         setChat((prev) => [
           ...prev,
-          { 
-            sender: 'صديقك', 
-            text: decryptedText || '⚠️ مفتاح التشفير غير مطابق' 
-          }
+          { sender: 'صديقك', text: decryptedText || '⚠️ مفتاح التشفير غير مطابق' }
         ]);
       } catch (e) {
         setChat((prev) => [
-          ...prev, 
+          ...prev,
           { sender: 'صديقك', text: '⚠️ مفتاح التشفير غير مطابق' }
         ]);
       }
@@ -39,16 +33,13 @@ export default function App() {
     e.preventDefault();
     if (!message.trim()) return;
 
-    // 1. تشفير الرسالة وتحويلها إلى نص صريح (.toString)
     const encrypted = CryptoJS.AES.encrypt(message, secretKey).toString();
 
-    // 2. إرسال الرسالة عبر السوكيت للطرف الآخر
     socket.emit('send_message', {
       sender: 'أنت',
       encryptedPayload: encrypted
     });
 
-    // 3. إظهار الرسالة فوراً في شاشة المرسل
     setChat((prev) => [...prev, { sender: 'أنت', text: message }]);
     setMessage('');
   };
@@ -78,7 +69,7 @@ export default function App() {
                 padding: '8px 12px', 
                 borderRadius: '12px', 
                 background: item.sender === 'أنت' ? '#007bff' : '#e9ecef', 
-                color: item.sender === 'أنت' ? '#fff' : '#000' 
+                color: item.sender === 'أ统' ? '#fff' : '#000' 
               }}>
                 {item.text}
               </span>
@@ -99,4 +90,4 @@ export default function App() {
       </form>
     </div>
   );
-            }
+                                      }
