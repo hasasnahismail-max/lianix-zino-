@@ -48,7 +48,8 @@ export default function App() {
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.title}>Lianix Zino - اختبار المراسلة</h2>
+      {/* اسم التطبيق بعد التعديل */}
+      <h2 style={styles.title}>ليانكس</h2>
       
       {/* إعداد مفتاح التشفير */}
       <div style={styles.box}>
@@ -106,7 +107,7 @@ const styles = {
     minHeight: '100vh',
     boxSizing: 'border-box'
   },
-  title: { textAlign: 'center', color: '#333' },
+  title: { textAlign: 'center', color: '#111', fontSize: '24px', fontWeight: 'bold' },
   box: { marginBottom: '15px' },
   label: { display: 'block', marginBottom: '5px', fontSize: '14px', fontWeight: 'bold' },
   input: { width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' },
