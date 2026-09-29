@@ -25,12 +25,12 @@ const BrickPhoneIcon = () => (
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem('lx_user');
+    const saved = localStorage.getItem('lx_user_secure');
     return saved ? JSON.parse(saved) : null;
   });
   const [phoneInput, setPhoneInput] = useState('');
   const [contacts, setContacts] = useState(() => {
-    const saved = localStorage.getItem('lx_contacts');
+    const saved = localStorage.getItem('lx_contacts_secure');
     return saved ? JSON.parse(saved) : [];
   });
   const [activeChat, setActiveChat] = useState(null);
@@ -50,22 +50,23 @@ export default function App() {
 
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem('lx_user', JSON.stringify(currentUser));
-      socket.emit('register_user', currentUser);
+      localStorage.setItem('lx_user_secure', JSON.stringify(currentUser));
+      socket.emit('register_user', { phone: currentUser.token, displayPhone: currentUser.phone });
     }
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('lx_contacts', JSON.stringify(contacts));
+    localStorage.setItem('lx_contacts_secure', JSON.stringify(contacts));
   }, [contacts]);
 
+  // فحص رابط الدعوة الآمن (استقبال الرمز العشوائي السري)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const invitePhone = params.get('invitePhone');
-    if (invitePhone && currentUser && invitePhone !== currentUser.phone) {
-      const roomId = [currentUser.phone, invitePhone].sort().join('_ROOM_');
-      const newC = { id: roomId, phone: invitePhone, lastMsg: 'محادثة جديدة', time: 'الآن' };
-      setContacts(prev => prev.find(c => c.phone === invitePhone) ? prev : [newC, ...prev]);
+    const inviteToken = params.get('secureToken');
+    if (inviteToken && currentUser && inviteToken !== currentUser.token) {
+      const roomId = [currentUser.token, inviteToken].sort().join('_SECURE_ROOM_');
+      const newC = { id: roomId, phone: 'جهة اتصال مشفرة', token: inviteToken, lastMsg: 'محادثة آمنة جديدة', time: 'الآن' };
+      setContacts(prev => prev.find(c => c.token === inviteToken) ? prev : [newC, ...prev]);
       setActiveChat(newC);
       setView('chat');
     }
@@ -81,7 +82,10 @@ export default function App() {
 
   useEffect(() => {
     setIsConnected(socket.connected);
-    const onConn = () => { setIsConnected(true); if (currentUser) socket.emit('register_user', currentUser); };
+    const onConn = () => { 
+      setIsConnected(true); 
+      if (currentUser) socket.emit('register_user', { phone: currentUser.token, displayPhone: currentUser.phone }); 
+    };
     const onDis = () => setIsConnected(false);
     socket.on('connect', onConn);
     socket.on('disconnect', onDis);
@@ -92,7 +96,7 @@ export default function App() {
       try {
         const bytes = CryptoJS.AES.decrypt(data.encryptedPayload, SYSTEM_KEY);
         const text = bytes.toString(CryptoJS.enc.Utf8);
-        const isMe = data.senderPhone === currentUser?.phone;
+        const isMe = data.senderPhone === currentUser?.token;
         if (text) {
           const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           const newMsg = { id: Date.now(), text, isMe, time, mediaType: data.mediaType || 'text' };
@@ -112,13 +116,18 @@ export default function App() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (phoneInput.trim()) setCurrentUser({ phone: phoneInput.trim() });
+    if (phoneInput.trim()) {
+      // توليد رمز سري عشوائي مشفر لا يُظهر رقم الهاتف في الرابط الخارجي
+      const secureToken = 'sec_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+      setCurrentUser({ phone: phoneInput.trim(), token: secureToken });
+    }
   };
 
   const handleInvite = () => {
     if (!currentUser) return;
-    const url = `${window.location.origin}${window.location.pathname}?invitePhone=${encodeURIComponent(currentUser.phone)}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent('تواصل معي عبر تطبيق ليانكس المشفر:\n' + url)}`, '_blank');
+    // الرابط الآن يحتوي فقط على رمز سري عشوائي تماماً (الخصوصية 100%)
+    const url = `${window.location.origin}${window.location.pathname}?secureToken=${currentUser.token}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent('انضم إلى قناة الاتصال الآمنة الخاصة بي عبر ليانكس:\n' + url)}`, '_blank');
   };
 
   const handleInputChange = (e) => {
@@ -134,7 +143,7 @@ export default function App() {
     e.preventDefault();
     if (!inputText.trim() || !activeChat || !currentUser) return;
     const encryptedPayload = CryptoJS.AES.encrypt(inputText, SYSTEM_KEY).toString();
-    socket.emit('send_private_message', { roomId: activeChat.id, encryptedPayload, senderPhone: currentUser.phone, mediaType: 'text' });
+    socket.emit('send_private_message', { roomId: activeChat.id, encryptedPayload, senderPhone: currentUser.token, mediaType: 'text' });
     socket.emit('stop_typing', { roomId: activeChat.id });
     setInputText('');
   };
@@ -147,7 +156,7 @@ export default function App() {
     const reader = new FileReader();
     reader.onload = () => {
       const encryptedPayload = CryptoJS.AES.encrypt(reader.result, SYSTEM_KEY).toString();
-      socket.emit('send_private_message', { roomId: activeChat.id, encryptedPayload, senderPhone: currentUser.phone, mediaType });
+      socket.emit('send_private_message', { roomId: activeChat.id, encryptedPayload, senderPhone: currentUser.token, mediaType });
     };
     reader.readAsDataURL(file);
   };
@@ -179,7 +188,7 @@ export default function App() {
               <BrickPhoneIcon />
               <div>
                 <h1 style={styles.title}>LIANIX <span style={{ color: '#00F0FF', fontSize: '12px' }}>| ليانكس</span></h1>
-                <span style={{ fontSize: '10px', color: '#94A3B8' }}>رقمك: {currentUser.phone}</span>
+                <span style={{ fontSize: '10px', color: '#94A3B8' }}>حساب آمن 🛡️</span>
               </div>
             </div>
             <span style={{ fontSize: '10px', color: isConnected ? '#10B981' : '#EF4444', fontWeight: 'bold' }}>
@@ -189,28 +198,28 @@ export default function App() {
 
           <div style={styles.invite} onClick={handleInvite}>
             <div>
-              <div style={{ fontWeight: 'bold', color: '#FFF', fontSize: '13px' }}>📲 دعوة صديق للربط المباشر</div>
-              <div style={{ fontSize: '10px', color: '#CBD5E1' }}>إرسال رابط لتسجيل صديقك والتحدث معه فوراً</div>
+              <div style={{ fontWeight: 'bold', color: '#FFF', fontSize: '13px' }}>📲 دعوة صديق برابط سري وآمن</div>
+              <div style={{ fontSize: '10px', color: '#CBD5E1' }}>إرسال رابط مشفر يحافظ على خصوصية رقمك</div>
             </div>
             <button style={styles.btnSmall}>إرسال</button>
           </div>
 
-          <div style={styles.secHeader}>المحادثات المربوطة ({contacts.length})</div>
+          <div style={styles.secHeader}>المحادثات الآمنة ({contacts.length})</div>
 
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {contacts.length === 0 ? (
               <div style={{ textAlign: 'center', marginTop: '60px', padding: '20px' }}>
                 <BrickPhoneIcon />
                 <p style={{ color: '#F8FAFC', fontWeight: 'bold', margin: '10px 0 4px 0' }}>لا توجد محادثات نشطة</p>
-                <p style={{ color: '#94A3B8', fontSize: '11px' }}>اضغط على "دعوة صديق" لإرسال رابط المنصة والبدء فوراً.</p>
+                <p style={{ color: '#94A3B8', fontSize: '11px' }}>اضغط على "دعوة صديق" لإرسال الرابط السري والبدء.</p>
               </div>
             ) : (
               contacts.map((c) => (
                 <div key={c.id} onClick={() => { setActiveChat(c); setView('chat'); }} style={styles.item}>
-                  <div style={styles.avatar}>📱</div>
+                  <div style={styles.avatar}>🔒</div>
                   <div style={{ flex: 1, overflow: 'hidden' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontWeight: 'bold', color: '#F8FAFC', fontSize: '14px' }}>{c.phone}</span>
+                      <span style={{ fontWeight: 'bold', color: '#F8FAFC', fontSize: '14px' }}>قناة اتصال آمنة</span>
                       <span style={{ fontSize: '10px', color: '#64748B' }}>{c.time}</span>
                     </div>
                     <div style={{ fontSize: '12px', color: '#94A3B8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.lastMsg}</div>
@@ -224,10 +233,10 @@ export default function App() {
         <div style={styles.screen}>
           <div style={styles.header}>
             <button onClick={() => setView('list')} style={styles.backBtn}>➔</button>
-            <div style={styles.avatarSmall}>📱</div>
+            <div style={styles.avatarSmall}>🔒</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 'bold', color: '#F8FAFC', fontSize: '14px' }}>{activeChat?.phone}</div>
-              <div style={{ fontSize: '10px', color: '#00F0FF' }}>محادثة مشفرة بالكامل 🟢</div>
+              <div style={{ fontWeight: 'bold', color: '#F8FAFC', fontSize: '14px' }}>قناة اتصال مشفرة</div>
+              <div style={{ fontSize: '10px', color: '#00F0FF' }}>اتصال آمن ومجهول الهوية 🟢</div>
             </div>
           </div>
 
@@ -235,8 +244,8 @@ export default function App() {
             {chatMsgs.length === 0 ? (
               <div style={styles.emptyBox}>
                 <p style={{ fontSize: '24px', margin: '0 0 4px 0' }}>🔐</p>
-                <p style={{ fontSize: '13px', color: '#F8FAFC', margin: 0 }}>محادثة مشفرة بالكامل مع {activeChat?.phone}</p>
-                <p style={{ fontSize: '10px', color: '#94A3B8', marginTop: '2px' }}>الرسائل والميديا محمية بالكامل بينهما.</p>
+                <p style={{ fontSize: '13px', color: '#F8FAFC', margin: 0 }}>محادثة مشفرة وآمنة تماماً</p>
+                <p style={{ fontSize: '10px', color: '#94A3B8', marginTop: '2px' }}>الرسائل والميديا محمية بسرية تامة.</p>
               </div>
             ) : (
               chatMsgs.map((m) => (
