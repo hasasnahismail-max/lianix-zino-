@@ -3,7 +3,10 @@ import io from 'socket.io-client';
 import CryptoJS from 'crypto-js';
 
 // الاتصال المباشر بمصدر السيرفر الذي يخدم الصفحة تلقائياً
-const socket = io();
+const socket = io('https://lianix-zino-1.onrender.com', {
+  transports: ['polling', 'websocket'],
+  autoConnect: true
+});
 
 export default function App() {
   const [secretKey, setSecretKey] = useState('ZINO2026');
