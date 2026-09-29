@@ -28,24 +28,33 @@ export default function App() {
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
 
-    // استقبال تأكيد السيرفر وعرض الرسالة للطرفين
     socket.on('receive_message', (data) => {
+      if (!data || !data.encryptedPayload) return;
+
       try {
         const bytes = CryptoJS.AES.decrypt(data.encryptedPayload, secretKey);
         const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-        const textToShow = decryptedText || '⚠️ مفتاح التشفير غير مطابق';
         const isMe = data.senderId === socket.id;
 
-        setChat((prev) => [
-          ...prev,
-          { sender: isMe ? 'أنت' : 'صديقك', text: textToShow }
-        ]);
+        // التحقق المباشر من أن النص تم فك تشفيره بنجاح وليس فارغاً
+        if (decryptedText && decryptedText.trim().length > 0) {
+          setChat((prev) => [
+            ...prev,
+            { sender: isMe ? 'أنت' : 'صديقك', text: decryptedText }
+          ]);
 
-        if (!isMe && "Notification" in window && Notification.permission === "granted") {
-          new Notification("رسالة جديدة من ليانكس 💬", {
-            body: textToShow,
-            dir: "rtl"
-          });
+          if (!isMe && "Notification" in window && Notification.permission === "granted") {
+            new Notification("رسالة جديدة من ليانكس 💬", {
+              body: decryptedText,
+              dir: "rtl"
+            });
+          }
+        } else {
+          // إذا كان المفتاح خاطئاً بالفعل وفشل فك التشفير
+          setChat((prev) => [
+            ...prev,
+            { sender: isMe ? 'أنت' : 'صديقك', text: '⚠️ مفتاح التشفير غير مطابق' }
+          ]);
         }
       } catch (e) {
         const isMe = data.senderId === socket.id;
@@ -139,4 +148,4 @@ export default function App() {
       </form>
     </div>
   );
-          }
+            }
