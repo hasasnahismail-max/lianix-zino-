@@ -8,7 +8,6 @@ const app = express();
 app.use(cors());
 
 const server = http.createServer(app);
-
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
   transports: ['polling', 'websocket'],
@@ -19,9 +18,9 @@ const activeUsers = {};
 
 io.on('connection', (socket) => {
   socket.on('register_user', (userData) => {
-    if (userData && userData.phone) {
+    if (userData && userData.token) {
       activeUsers[socket.id] = userData;
-      socket.join(userData.phone);
+      socket.join(userData.token);
       io.emit('online_users', Object.values(activeUsers));
     }
   });
@@ -37,7 +36,6 @@ io.on('connection', (socket) => {
     });
   });
 
-  // أحداث جاري الكتابة والإيموجي المتكلم اللحظي
   socket.on('typing', (data) => {
     socket.to(data.roomId).emit('user_typing', { senderId: socket.id });
   });
@@ -60,5 +58,5 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`LIANIX Premium Server running on port ${PORT}`);
+  console.log(`LIANIX Secure Server running on port ${PORT}`);
 });
