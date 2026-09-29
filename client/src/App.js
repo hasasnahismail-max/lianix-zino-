@@ -7,9 +7,9 @@ const socket = io({
   autoConnect: true
 });
 
-// أيقونة شعار ليانكس التكتيكي
+// شعار ليانكس التكتيكي
 const LianixLogo = () => (
-  <svg width="38" height="38" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <svg width="30" height="30" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
     <rect x="25" y="15" width="50" height="75" rx="10" fill="#0B0F19" stroke="#00F0FF" strokeWidth="2.5"/>
     <rect x="46" y="4" width="8" height="12" rx="2" fill="#0B0F19" stroke="#00F0FF" strokeWidth="2"/>
     <rect x="32" y="24" width="36" height="22" rx="5" fill="#020617" stroke="#38BDF8" strokeWidth="1.5"/>
@@ -18,19 +18,14 @@ const LianixLogo = () => (
     <rect x="34" y="51" width="8" height="5" rx="1.5" fill="#1E293B"/>
     <rect x="46" y="51" width="8" height="5" rx="1.5" fill="#1E293B"/>
     <rect x="58" y="51" width="8" height="5" rx="1.5" fill="#1E293B"/>
-    <rect x="34" y="59" width="8" height="5" rx="1.5" fill="#1E293B"/>
-    <rect x="46" y="59" width="8" height="5" rx="1.5" fill="#1E293B"/>
-    <rect x="58" y="59" width="8" height="5" rx="1.5" fill="#1E293B"/>
-    <rect x="34" y="73" width="14" height="8" rx="2" fill="#2563EB"/>
-    <rect x="52" y="73" width="14" height="8" rx="2" fill="#EF4444"/>
   </svg>
 );
 
 export default function App() {
-  // قائمة الغرف الافتراضية المحفوظة
+  // قائمة المحادثات والغرف الافتراضية
   const defaultRooms = [
-    { id: 'MAIN_VAULT', name: '🔒 الخزنة الرئيسية', key: 'ZINO2026' },
-    { id: 'PRIVATE_CHAT', name: '💬 دردشة خاصة', key: 'SECRET123' },
+    { id: 'MAIN_VAULT', name: 'الخزنة الرئيسية', key: 'ZINO2026', color: '#2563EB', lastMsg: 'القناة مشفرة بالكامل...', time: 'الآن' },
+    { id: 'PRIVATE_CHAT', name: 'محادثة خاصة', key: 'SECRET123', color: '#059669', lastMsg: 'جاهز للاستلام', time: '18:45' },
   ];
 
   const [roomsList, setRoomsList] = useState(() => {
@@ -39,11 +34,12 @@ export default function App() {
   });
 
   const [activeRoom, setActiveRoom] = useState(roomsList[0]);
+  const [currentScreen, setCurrentScreen] = useState('list'); // 'list' أو 'chat' (أسلوب واتساب)
   const [showRoomModal, setShowRoomModal] = useState(false);
+  
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomKey, setNewRoomKey] = useState('');
 
-  const [viewMode, setViewMode] = useState('chat'); // 'rooms' أو 'chat' للشاشات الصغيرة
   const [message, setMessage] = useState('');
   const [chat, setChat] = useState([]);
   const [isConnected, setIsConnected] = useState(socket.connected);
@@ -52,14 +48,14 @@ export default function App() {
   const chatEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  // حفظ القائمة في تخزين الهاتف المحلي
+  // حفظ الغرف في تخزين الهاتف
   useEffect(() => {
     localStorage.setItem('lianix_rooms', JSON.stringify(roomsList));
   }, [roomsList]);
 
-  // انضمام للغرفة المحددة عند تغييرها
+  // الاتصال بالغرفة المحددة
   useEffect(() => {
-    setChat([]); // تفريغ شاشة الشات السابقة
+    setChat([]);
     socket.emit('join_room', activeRoom.id);
   }, [activeRoom.id]);
 
@@ -73,19 +69,12 @@ export default function App() {
     styleSheet.innerText = `
       @keyframes talkLip {
         0% { transform: scale(1) translateY(0); }
-        50% { transform: scale(1.25) translateY(-2px); }
+        50% { transform: scale(1.2) translateY(-2px); }
         100% { transform: scale(1) translateY(0); }
       }
-      .talking-emoji {
-        display: inline-block;
-        animation: talkLip 0.35s infinite ease-in-out;
-      }
+      .talking-emoji { display: inline-block; animation: talkLip 0.35s infinite ease-in-out; }
     `;
     document.head.appendChild(styleSheet);
-
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
 
     if (socket.connected) setIsConnected(true);
 
@@ -107,27 +96,35 @@ export default function App() {
         const isMe = data.senderId === socket.id;
 
         if (decryptedContent && decryptedContent.trim().length > 0) {
+          const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          
           setChat((prev) => [
             ...prev,
             { 
               sender: isMe ? 'أنت' : 'صديقك', 
               content: decryptedContent, 
-              mediaType: data.mediaType || 'text' 
+              mediaType: data.mediaType || 'text',
+              time: nowStr
             }
           ]);
 
-          if (!isMe && "Notification" in window && Notification.permission === "granted") {
-            new Notification(`رسالة من ${activeRoom.name} 💬`, {
-              body: data.mediaType === 'text' ? decryptedContent : '📷 وصلتك ميديا مشفرة',
-              dir: "rtl"
-            });
-          }
+          // تحديث آخر رسالة في القائمة
+          setRoomsList(prevRooms => prevRooms.map(r => {
+            if (r.id === activeRoom.id) {
+              return {
+                ...r,
+                lastMsg: data.mediaType === 'text' ? decryptedContent : '📷 صورة/فيديو',
+                time: nowStr
+              };
+            }
+            return r;
+          }));
         }
       } catch (e) {
         const isMe = data.senderId === socket.id;
         setChat((prev) => [
           ...prev,
-          { sender: isMe ? 'أنت' : 'صديقك', content: '⚠️ مفتاح التشفير غير مطابق لهذه الغرفة', mediaType: 'text' }
+          { sender: isMe ? 'أنت' : 'صديقك', content: '⚠️ مفتاح التشفير غير مطابق', mediaType: 'text', time: '' }
         ]);
       }
     });
@@ -141,7 +138,6 @@ export default function App() {
     };
   }, [activeRoom]);
 
-  // إشعار الجانب الآخر بالكتابة
   const handleInputChange = (e) => {
     setMessage(e.target.value);
     socket.emit('typing', { room: activeRoom.id });
@@ -152,7 +148,6 @@ export default function App() {
     }, 1200);
   };
 
-  // إرسال النص
   const handleSend = (e) => {
     e.preventDefault();
     if (!message.trim()) return;
@@ -163,16 +158,12 @@ export default function App() {
     setMessage('');
   };
 
-  // إرسال الصور والفيديوهات
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const fileType = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : null;
-    if (!fileType) {
-      alert('يرجى اختيار صورة أو فيديو فقط');
-      return;
-    }
+    if (!fileType) return;
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -183,90 +174,100 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
-  // إضافة غرفة جديدة للقائمة
   const handleAddRoom = (e) => {
     e.preventDefault();
     if (!newRoomName.trim() || !newRoomKey.trim()) return;
 
+    const colors = ['#2563EB', '#059669', '#D97706', '#7C3AED', '#DB2777'];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
     const roomId = newRoomName.trim().toUpperCase().replace(/\s+/g, '_');
     const newRoomObj = {
       id: roomId,
-      name: `📁 ${newRoomName}`,
-      key: newRoomKey.trim()
+      name: newRoomName.trim(),
+      key: newRoomKey.trim(),
+      color: randomColor,
+      lastMsg: 'تم إنشاء المحادثة',
+      time: 'الآن'
     };
 
-    setRoomsList((prev) => [...prev, newRoomObj]);
+    setRoomsList((prev) => [newRoomObj, ...prev]);
     setActiveRoom(newRoomObj);
     setNewRoomName('');
     setNewRoomKey('');
     setShowRoomModal(false);
-    setViewMode('chat');
+    setCurrentScreen('chat');
+  };
+
+  // استخراج أول حرفين للرمز الشخصي
+  const getInitials = (name) => {
+    if (!name) return 'LX';
+    const words = name.trim().split(' ');
+    if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
   };
 
   return (
     <div style={styles.container}>
-      {/* هيدر التطبيق والرأس العلوي */}
-      <div style={styles.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <LianixLogo />
-          <div>
-            <h3 style={{ margin: 0, fontSize: '16px', color: '#F8FAFC' }}>LIANIX MESSENGER</h3>
-            <span style={{ fontSize: '10px', color: isConnected ? '#10B981' : '#EF4444', fontWeight: 'bold' }}>
-              {isConnected ? '🟢 SECURE CONNECTED' : '🔴 DISCONNECTED'}
-            </span>
-          </div>
-        </div>
-
-        {/* أزرار التبديل بين شاشة المحادثة وقائمة الغرف (مثل واتساب) */}
-        <div style={{ display: 'flex', gap: '5px' }}>
-          <button 
-            onClick={() => setViewMode('rooms')} 
-            style={{ ...styles.tabBtn, background: viewMode === 'rooms' ? '#2563EB' : '#1E293B' }}>
-            📋 الغرف
-          </button>
-          <button 
-            onClick={() => setViewMode('chat')} 
-            style={{ ...styles.tabBtn, background: viewMode === 'chat' ? '#2563EB' : '#1E293B' }}>
-            💬 الدردشة
-          </button>
-        </div>
-      </div>
-
-      {/* شاشة قائمة الغرف (WhatsApp Rooms List) */}
-      {viewMode === 'rooms' ? (
-        <div style={styles.roomsContainer}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <h4 style={{ margin: 0, color: '#00F0FF', fontSize: '14px' }}>قائمة المحادثات والغرف:</h4>
-            <button onClick={() => setShowRoomModal(true)} style={styles.addRoomBtn}>+ غرفة جديدة</button>
+      {/* ----------------1. شاشة قائمة المحادثات (WhatsApp Chat List) ---------------- */}
+      {currentScreen === 'list' ? (
+        <div style={styles.screenWrapper}>
+          {/* هيدر القائمة الرئيسي */}
+          <div style={styles.mainHeader}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <LianixLogo />
+              <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#F8FAFC' }}>LIANIX</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '10px', color: isConnected ? '#10B981' : '#EF4444', fontWeight: 'bold' }}>
+                {isConnected ? '🟢 متصل' : '🔴 غير متصل'}
+              </span>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {/* عنوان المحادثات */}
+          <div style={styles.sectionTitle}>المحادثات والقنوات المشفرة</div>
+
+          {/* عناصر القائمة */}
+          <div style={styles.chatListScroll}>
             {roomsList.map((rm) => (
               <div 
                 key={rm.id} 
-                onClick={() => { setActiveRoom(rm); setViewMode('chat'); }}
-                style={{
-                  ...styles.roomCard,
-                  border: activeRoom.id === rm.id ? '1px solid #00F0FF' : '1px solid #1E293B',
-                  background: activeRoom.id === rm.id ? '#1E293B' : '#0F172A'
-                }}>
-                <div>
-                  <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#F8FAFC' }}>{rm.name}</div>
-                  <div style={{ fontSize: '10px', color: '#64748B' }}>ID: {rm.id}</div>
+                onClick={() => { setActiveRoom(rm); setCurrentScreen('chat'); }}
+                style={styles.chatListItem}>
+                
+                {/* الدائرة الشخصية (Avatar) */}
+                <div style={{ ...styles.avatar, background: rm.color }}>
+                  {getInitials(rm.name)}
                 </div>
-                {activeRoom.id === rm.id && <span style={{ fontSize: '10px', color: '#10B981', fontWeight: 'bold' }}>نشط الآن 🟢</span>}
+
+                {/* تفاصيل المحادثة */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 'bold', fontSize: '15px', color: '#F8FAFC' }}>{rm.name}</span>
+                    <span style={{ fontSize: '10px', color: '#64748B' }}>{rm.time}</span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
+                    {rm.lastMsg}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
 
-          {/* نافذة إنشاء غرفة جديدة */}
+          {/* الزر العائم لإنشاء محادثة جديدة (FAB Button مثل واتساب) */}
+          <button onClick={() => setShowRoomModal(true)} style={styles.fabBtn} title="إضافة محادثة">
+            +
+          </button>
+
+          {/* نافذة إنشاء محادثة جديدة */}
           {showRoomModal && (
             <div style={styles.modalOverlay}>
               <form onSubmit={handleAddRoom} style={styles.modalContent}>
-                <h4 style={{ margin: '0 0 10px 0', color: '#00F0FF' }}>إضافة غرفة/محادثة جديدة</h4>
+                <h4 style={{ margin: '0 0 12px 0', color: '#00F0FF', textAlign: 'center' }}>إضافة محادثة / شخص جديد</h4>
                 <input 
                   type="text" 
-                  placeholder="اسم الغرفة (مثال: محادثة عمل)" 
+                  placeholder="اسم الشخص أو الغرفة" 
                   value={newRoomName} 
                   onChange={(e) => setNewRoomName(e.target.value)} 
                   style={styles.inputModal} 
@@ -274,14 +275,14 @@ export default function App() {
                 />
                 <input 
                   type="text" 
-                  placeholder="مفتاح التشفير الخاص بهذه الغرفة" 
+                  placeholder="مفتاح التشفير الخاص بالمحادثة" 
                   value={newRoomKey} 
                   onChange={(e) => setNewRoomKey(e.target.value)} 
                   style={styles.inputModal} 
                   required 
                 />
-                <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                  <button type="submit" style={styles.saveBtn}>حفظ وإنشاء</button>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button type="submit" style={styles.saveBtn}>بدء المحادثة</button>
                   <button type="button" onClick={() => setShowRoomModal(false)} style={styles.cancelBtn}>إلغاء</button>
                 </div>
               </form>
@@ -289,75 +290,80 @@ export default function App() {
           )}
         </div>
       ) : (
-        /* شاشة الدردشة الحالية */
-        <div>
-          {/* بار الغرفة الحالية */}
-          <div style={styles.activeRoomBar}>
-            <div>
-              <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#F8FAFC' }}>{activeRoom.name}</span>
-              <span style={{ fontSize: '10px', color: '#00F0FF', display: 'block' }}>مفتاح الخزنة: {activeRoom.key}</span>
-            </div>
-            <button onClick={() => setViewMode('rooms')} style={{ fontSize: '11px', color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer' }}>
-              تغيير 🔄
+        /* ---------------- 2. شاشة المحادثة المفتوحة (WhatsApp Chat Screen) ---------------- */
+        <div style={styles.screenWrapper}>
+          {/* هيدر الدردشة العلوية مع سهم الرجوع والرمز الشخصي */}
+          <div style={styles.chatHeader}>
+            <button onClick={() => setCurrentScreen('list')} style={styles.backBtn} title="رجوع للقائمة">
+              ➔
             </button>
+            <div style={{ ...styles.avatarSmall, background: activeRoom.color }}>
+              {getInitials(activeRoom.name)}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#F8FAFC' }}>{activeRoom.name}</div>
+              <div style={{ fontSize: '10px', color: '#00F0FF' }}>مفتاح الخزنة: {activeRoom.key}</div>
+            </div>
           </div>
 
-          {/* صندوق المحادثة */}
+          {/* صندوق المحادثة والرسائل */}
           <div style={styles.chatBox}>
             {chat.length === 0 ? (
-              <div style={{ textAlign: 'center', marginTop: '90px', color: '#64748B' }}>
-                <p style={{ fontSize: '24px', margin: '0 0 5px 0' }}>🔐</p>
-                <p style={{ fontSize: '12px', margin: 0 }}>مرحباً بك في {activeRoom.name}. القناة مشفرة بالكامل...</p>
+              <div style={{ textAlign: 'center', marginTop: '100px', color: '#64748B' }}>
+                <p style={{ fontSize: '28px', margin: '0 0 5px 0' }}>🔐</p>
+                <p style={{ fontSize: '12px', margin: 0 }}>محادثة مشفرة تماماً مع {activeRoom.name}</p>
               </div>
             ) : (
               chat.map((item, index) => (
-                <div key={index} style={{ marginBottom: '12px', textAlign: item.sender === 'أنت' ? 'left' : 'right' }}>
-                  <span style={{ fontSize: '10px', color: '#94A3B8', display: 'block', marginBottom: '3px' }}>{item.sender}</span>
+                <div key={index} style={{ marginBottom: '10px', textAlign: item.sender === 'أنت' ? 'left' : 'right' }}>
                   <div style={{
                     display: 'inline-block',
-                    padding: item.mediaType === 'text' ? '10px 14px' : '6px',
-                    borderRadius: '14px',
-                    background: item.sender === 'أنت' ? '#2563EB' : '#1E293B',
-                    color: '#FFFFFF',
-                    border: item.sender === 'أنت' ? '1px solid #3B82F6' : '1px solid #334155',
-                    maxWidth: '85%',
+                    padding: item.mediaType === 'text' ? '8px 12px' : '6px',
+                    borderRadius: '12px',
+                    background: item.sender === 'أنت' ? '#005C4B' : '#202C33', // ألوان واتساب الداكنة
+                    color: '#E9EDEF',
+                    maxWidth: '80%',
                     wordBreak: 'break-word',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                    position: 'relative'
                   }}>
-                    {item.mediaType === 'text' && item.content}
+                    {item.mediaType === 'text' && (
+                      <span style={{ fontSize: '13px' }}>{item.content}</span>
+                    )}
                     {item.mediaType === 'image' && (
-                      <img src={item.content} alt="ميديا مشفرة" style={{ width: '100%', borderRadius: '10px', maxHeight: '250px', objectFit: 'cover' }} />
+                      <img src={item.content} alt="ميديا" style={{ width: '100%', borderRadius: '8px', maxHeight: '220px', objectFit: 'cover' }} />
                     )}
                     {item.mediaType === 'video' && (
-                      <video src={item.content} controls style={{ width: '100%', borderRadius: '10px', maxHeight: '250px' }} />
+                      <video src={item.content} controls style={{ width: '100%', borderRadius: '8px', maxHeight: '220px' }} />
                     )}
+                    <span style={{ fontSize: '9px', color: '#8696A0', display: 'block', textAlign: 'left', marginTop: '3px' }}>
+                      {item.time}
+                    </span>
                   </div>
                 </div>
               ))
             )}
 
-            {/* الإيموجي الفكاهي الناطق */}
+            {/* مؤشر الكتابة */}
             {isFriendTyping && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '10px 0', background: '#0F172A', padding: '6px 12px', borderRadius: '20px', width: 'fit-content', border: '1px solid #00F0FF' }}>
-                <span className="talking-emoji" style={{ fontSize: '20px' }}>🗣️</span>
-                <span style={{ fontSize: '11px', color: '#00F0FF', fontWeight: 'bold' }}>
-                  صديقك يتكلم الآن... 💬
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: '6px 0', background: '#111B21', padding: '4px 10px', borderRadius: '15px', width: 'fit-content', border: '1px solid #00F0FF' }}>
+                <span className="talking-emoji" style={{ fontSize: '16px' }}>🗣️</span>
+                <span style={{ fontSize: '10px', color: '#00F0FF', fontWeight: 'bold' }}>يكتب الآن...</span>
               </div>
             )}
 
             <div ref={chatEndRef} />
           </div>
 
-          {/* نموذج إدخال الرسالة */}
-          <form onSubmit={handleSend} style={styles.form}>
-            <label style={styles.attachBtn} title="إرسال صورة أو فيديو">
+          {/* شريط الإدخال المطور */}
+          <form onSubmit={handleSend} style={styles.inputForm}>
+            <label style={styles.attachBtn} title="إرفاق ميديا">
               📷
               <input type="file" accept="image/*,video/*" onChange={handleFileUpload} style={{ display: 'none' }} />
             </label>
             <input 
               type="text" 
-              placeholder="اكتب رسالة مشفرة..." 
+              placeholder="اكتب رسالة..." 
               value={message} 
               onChange={handleInputChange} 
               style={styles.inputMain} 
@@ -370,23 +376,27 @@ export default function App() {
   );
 }
 
-// التنسيقات العصرية الهادئة والمظلمة
+// التنسيقات المطابقة لتصميم واتساب المظلم التكتيكي
 const styles = {
-  container: { maxWidth: '420px', margin: '15px auto', padding: '16px', fontFamily: 'system-ui, sans-serif', direction: 'rtl', background: '#0B0F19', borderRadius: '24px', boxShadow: '0 12px 40px rgba(0,240,255,0.12)', border: '1px solid #1E293B' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: '1px solid #1E293B' },
-  tabBtn: { padding: '6px 10px', borderRadius: '8px', border: 'none', color: '#FFF', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' },
-  roomsContainer: { padding: '10px 0', minHeight: '400px' },
-  roomCard: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', borderRadius: '12px', cursor: 'pointer', transition: '0.2s' },
-  addRoomBtn: { padding: '6px 12px', background: '#10B981', color: '#FFF', border: 'none', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold' },
-  activeRoomBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0F172A', padding: '8px 12px', borderRadius: '10px', border: '1px solid #1E293B', marginBottom: '10px' },
-  chatBox: { border: '1px solid #1E293B', height: '330px', overflowY: 'auto', padding: '12px', borderRadius: '16px', background: '#020617', marginBottom: '12px' },
-  form: { display: 'flex', gap: '8px', alignItems: 'center' },
-  attachBtn: { background: '#1E293B', border: '1px solid #334155', padding: '10px 14px', borderRadius: '10px', cursor: 'pointer', fontSize: '16px', color: '#FFF' },
-  inputMain: { flex: 1, padding: '12px 14px', borderRadius: '10px', border: '1px solid #334155', background: '#0F172A', color: '#F8FAFC', outline: 'none', fontSize: '13px' },
-  sendBtn: { padding: '12px 20px', background: '#2563EB', color: '#FFF', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
-  modalContent: { background: '#0F172A', padding: '20px', borderRadius: '16px', width: '280px', border: '1px solid #00F0FF' },
-  inputModal: { width: '100%', padding: '10px', margin: '6px 0', borderRadius: '8px', border: '1px solid #334155', background: '#020617', color: '#FFF', fontSize: '12px', boxSizing: 'border-box' },
-  saveBtn: { flex: 1, padding: '8px', background: '#2563EB', color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' },
+  container: { maxWidth: '410px', margin: '10px auto', height: '92vh', fontFamily: 'system-ui, sans-serif', direction: 'rtl', background: '#111B21', borderRadius: '20px', overflow: 'hidden', border: '1px solid #222D34', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' },
+  screenWrapper: { display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' },
+  mainHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#202C33', borderBottom: '1px solid #222D34' },
+  sectionTitle: { padding: '10px 16px 4px 16px', fontSize: '12px', fontWeight: 'bold', color: '#00F0FF' },
+  chatListScroll: { flex: 1, overflowY: 'auto', padding: '0 8px' },
+  chatListItem: { display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderBottom: '1px solid #222D34', cursor: 'pointer', borderRadius: '10px', transition: '0.2s' },
+  avatar: { width: '45px', height: '45px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#FFF', fontWeight: 'bold', fontSize: '16px' },
+  avatarSmall: { width: '36px', height: '36px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#FFF', fontWeight: 'bold', fontSize: '13px' },
+  fabBtn: { position: 'absolute', bottom: '20px', left: '20px', width: '50px', height: '50px', borderRadius: '50%', background: '#00A884', color: '#FFF', fontSize: '28px', border: 'none', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center' },
+  chatHeader: { display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#202C33', borderBottom: '1px solid #222D34' },
+  backBtn: { background: 'none', border: 'none', color: '#00F0FF', fontSize: '18px', cursor: 'pointer', padding: '0 4px' },
+  chatBox: { flex: 1, overflowY: 'auto', padding: '12px', background: '#0B141A' },
+  inputForm: { display: 'flex', gap: '8px', padding: '10px 12px', background: '#202C33', alignItems: 'center' },
+  attachBtn: { background: '#2A3942', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '16px' },
+  inputMain: { flex: 1, padding: '10px 14px', borderRadius: '8px', border: 'none', background: '#2A3942', color: '#E9EDEF', outline: 'none', fontSize: '13px' },
+  sendBtn: { padding: '10px 16px', background: '#00A884', color: '#FFF', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' },
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 999 },
+  modalContent: { background: '#202C33', padding: '20px', borderRadius: '16px', width: '280px', border: '1px solid #00F0FF' },
+  inputModal: { width: '100%', padding: '10px', margin: '6px 0', borderRadius: '8px', border: '1px solid #2A3942', background: '#111B21', color: '#FFF', fontSize: '12px', boxSizing: 'border-box' },
+  saveBtn: { flex: 1, padding: '8px', background: '#00A884', color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' },
   cancelBtn: { flex: 1, padding: '8px', background: '#EF4444', color: '#FFF', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }
 };
