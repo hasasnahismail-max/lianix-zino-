@@ -2,7 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import CryptoJS from 'crypto-js';
 
-const socket = io({ transports: ['polling', 'websocket'], autoConnect: true });
+const socket = io(window.location.origin, {
+  transports: ['websocket', 'polling'],
+  secure: true,
+  reconnection: true,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 1000
+});
+
 const SYSTEM_KEY = 'LIANIX_E2E_AUTO_SECURE_KEY_2026';
 
 const BrickPhoneIcon = () => (
