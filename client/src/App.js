@@ -5,7 +5,7 @@ import CryptoJS from 'crypto-js';
 const socket = io({ transports: ['polling', 'websocket'], autoConnect: true });
 const SYSTEM_KEY = 'LIANIX_E2E_AUTO_SECURE_KEY_2026';
 
-// أيقونة الهاتف المحمول الثمانيني الضخم (Late 80s Retro Brick Phone)
+// أيقونة الهاتف المحمول الأيقونية المخصصة لـ LIANIX
 const BrickPhoneIcon = () => (
   <svg width="42" height="42" viewBox="0 0 100 100" fill="none">
     <rect x="35" y="22" width="30" height="70" rx="5" fill="#0B0F19" stroke="#00F0FF" strokeWidth="2.5"/>
@@ -158,10 +158,10 @@ export default function App() {
         <div style={styles.card}>
           <BrickPhoneIcon />
           <h1 style={styles.title}>LIANIX <span style={{ color: '#00F0FF', fontSize: '13px' }}>| ليانكس</span></h1>
-          <p style={styles.subText}>منصة الاتصال المشفرة بالهوية الثمانينية المحمولة. أدخل رقم هاتفك لتفعيل حسابك:</p>
+          <p style={styles.subText}>ENTER YOUR NUMBER TO SECURE THE LINE</p>
           <form onSubmit={handleLogin}>
-            <input type="tel" placeholder="رقم هاتفك (مثال: 059XXXXXXX)" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} style={styles.input} required />
-            <button type="submit" style={styles.btnGreen}>تفعيل وتصفح المنصة</button>
+            <input type="tel" placeholder="Phone Number (e.g. 059XXXXXXX)" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} style={styles.input} required />
+            <button type="submit" style={styles.btnGreen}>CONNECT NOW</button>
           </form>
         </div>
       </div>
@@ -227,7 +227,7 @@ export default function App() {
             <div style={styles.avatarSmall}>📱</div>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 'bold', color: '#F8FAFC', fontSize: '14px' }}>{activeChat?.phone}</div>
-              <div style={{ fontSize: '10px', color: '#00F0FF' }}>محادثة مشفرة 🟢</div>
+              <div style={{ fontSize: '10px', color: '#00F0FF' }}>محادثة مشفرة بالكامل 🟢</div>
             </div>
           </div>
 
@@ -276,11 +276,11 @@ export default function App() {
 
 const styles = {
   shell: { width: '100vw', height: '100vh', background: '#0B0F19', fontFamily: 'system-ui, sans-serif', direction: 'rtl', display: 'flex', justifyContent: 'center', alignItems: 'center' },
-  card: { background: '#0F172A', padding: '26px 20px', borderRadius: '20px', width: '300px', textAlign: 'center', border: '1px solid #00F0FF', boxShadow: '0 10px 30px rgba(0,240,255,0.15)' },
+  card: { background: '#0F172A', padding: '28px 20px', borderRadius: '20px', width: '310px', textAlign: 'center', border: '1px solid #00F0FF', boxShadow: '0 10px 30px rgba(0,240,255,0.15)' },
   title: { margin: 0, fontSize: '20px', fontWeight: '900', color: '#F8FAFC', letterSpacing: '1px' },
-  subText: { fontSize: '12px', color: '#94A3B8', margin: '8px 0 20px 0', lineHeight: '1.4' },
-  input: { width: '100%', padding: '12px', margin: '6px 0', borderRadius: '8px', border: '1px solid #334155', background: '#020617', color: '#FFF', fontSize: '13px', boxSizing: 'border-box', outline: 'none' },
-  btnGreen: { width: '100%', padding: '12px', background: '#00A884', color: '#FFF', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', marginTop: '8px' },
+  subText: { fontSize: '11px', fontWeight: 'bold', color: '#00F0FF', margin: '12px 0 20px 0', letterSpacing: '1px', fontFamily: 'monospace' },
+  input: { width: '100%', padding: '12px', margin: '6px 0', borderRadius: '8px', border: '1px solid #334155', background: '#020617', color: '#FFF', fontSize: '13px', boxSizing: 'border-box', outline: 'none', textAlign: 'center' },
+  btnGreen: { width: '100%', padding: '12px', background: '#00A884', color: '#FFF', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', marginTop: '10px', letterSpacing: '1px' },
   screen: { width: '100%', maxWidth: '420px', height: '100%', display: 'flex', flexDirection: 'column', background: '#020617', position: 'relative' },
   header: { padding: '12px 14px', background: '#0F172A', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1E293B' },
   invite: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#005C4B', padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #1E293B' },
