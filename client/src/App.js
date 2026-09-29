@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import CryptoJS from 'crypto-js';
 
-const socket = io(window.location.origin, {
+// ربط مباشر وصريح برابط المنصة الخاص بك على Render لضمان الاتصال الفوري
+const SOCKET_URL = 'https://lianix-zino-app.onrender.com';
+const socket = io(SOCKET_URL, {
   transports: ['websocket', 'polling'],
   secure: true,
   reconnection: true,
