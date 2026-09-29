@@ -3,7 +3,7 @@ import io from 'socket.io-client';
 import CryptoJS from 'crypto-js';
 
 // الاتصال بالسيرفر
-const socket = io('https://lianix-zino-1.onrender.com');
+const socket = io();
 
 export default function App() {
   const [secretKey, setSecretKey] = useState('ZINO2026');
