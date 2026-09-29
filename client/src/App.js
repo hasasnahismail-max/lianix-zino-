@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import CryptoJS from 'crypto-js';
 
-// الاتصال بنفس سيرفر الموقع تلقائياً دون تعارض
-const socket = io();
+// الاتصال الديناميكي بالنطاق الذي يخدم الصفحة حالياً
+const socket = io({
+  transports: ['polling', 'websocket'],
+  autoConnect: true
+});
 
 export default function App() {
   const [secretKey, setSecretKey] = useState('ZINO2026');
@@ -12,7 +15,7 @@ export default function App() {
   const [isConnected, setIsConnected] = useState(socket.connected);
 
   useEffect(() => {
-    // 1. فحص الاتصال القائم فوراً إذا كان مكتصلاً مسبقاً
+    // تحديث الحالة فوراً إذا كان السوكيت متصلاً مسبقاً
     if (socket.connected) {
       setIsConnected(true);
     }
@@ -23,22 +26,17 @@ export default function App() {
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
 
-    // 2. استقبال الرسائل القادمة وفك التشفير
     socket.on('receive_message', (data) => {
       try {
         const bytes = CryptoJS.AES.decrypt(data.encryptedPayload, secretKey);
         const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-
         setChat((prev) => [
           ...prev,
-          { 
-            sender: 'صديقك', 
-            text: decryptedText || '⚠️ مفتاح التشفير غير مطابق' 
-          }
+          { sender: 'صديقك', text: decryptedText || '⚠️ مفتاح التشفير غير مطابق' }
         ]);
       } catch (e) {
         setChat((prev) => [
-          ...prev, 
+          ...prev,
           { sender: 'صديقك', text: '⚠️ مفتاح التشفير غير مطابق' }
         ]);
       }
@@ -56,20 +54,17 @@ export default function App() {
     if (!message.trim()) return;
 
     try {
-      // 1. تشفير الرسالة بتحويلها لنص صريح
       const encrypted = CryptoJS.AES.encrypt(message, secretKey).toString();
 
-      // 2. بث الرسالة عبر السوكيت
       socket.emit('send_message', {
         sender: 'أنت',
         encryptedPayload: encrypted
       });
 
-      // 3. إضافة الرسالة فوراً لشاشة المرسل
       setChat((prev) => [...prev, { sender: 'أنت', text: message }]);
       setMessage('');
     } catch (err) {
-      alert('حدث خطأ أثناء التشفير أو الإرسال');
+      alert('حدث خطأ أثناء الإرسال');
     }
   };
 
