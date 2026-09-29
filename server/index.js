@@ -9,28 +9,40 @@ app.use(cors());
 
 const server = http.createServer(app);
 
+// زيادة حجم الحزمة المسموحة إلى 100 ميجابايت لنقل الصور والفيديوهات المشفّرة
 const io = new Server(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
   },
-  transports: ['polling', 'websocket']
+  transports: ['polling', 'websocket'],
+  maxHttpBufferSize: 1e8 
 });
 
 io.on('connection', (socket) => {
-  console.log('مستخدم متصل:', socket.id);
+  // الانضمام إلى غرفة محددة
+  socket.on('join_room', (room) => {
+    socket.join(room);
+  });
 
-  // إعادة بث الرسالة للجميع مع إرفاق معرف جهاز المرسل
+  // بث الرسالة والميديا فقط لأعضاء نفس الغرفة
   socket.on('send_message', (data) => {
-    io.emit('receive_message', {
+    io.to(data.room).emit('receive_message', {
       ...data,
       senderId: socket.id
     });
   });
 
-  socket.on('disconnect', () => {
-    console.log('مستخدم غادر');
+  // أحداث جاري الكتابة (الإيموجي المتكلم)
+  socket.on('typing', (data) => {
+    socket.to(data.room).emit('user_typing', { senderId: socket.id });
   });
+
+  socket.on('stop_typing', (data) => {
+    socket.to(data.room).emit('user_stop_typing', { senderId: socket.id });
+  });
+
+  socket.on('disconnect', () => {});
 });
 
 app.use(express.static(path.join(__dirname, '../client/build')));
