@@ -1,9 +1,17 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const cors = require('cors');
 
 const app = express();
+app.use(cors());
+
 const server = http.createServer(app);
+
+app.get('/', (req, res) => {
+  res.send('Lianix Server is Running Successfully');
+});
+
 const io = new Server(server, {
   cors: {
     origin: "*",
@@ -12,20 +20,18 @@ const io = new Server(server, {
 });
 
 io.on('connection', (socket) => {
-  console.log(`[+] مستخدم تكتيكي متصل: ${socket.id}`);
+  console.log('مستخدم متصل:', socket.id);
 
-  // استقبال وإذاعة الرسائل المشفرة بين الأطراف
   socket.on('send_message', (data) => {
-    console.log(`[SECURE RELAY] تمرير حمولة مشفرة من: ${data.sender}`);
     socket.broadcast.emit('receive_message', data);
   });
 
   socket.on('disconnect', () => {
-    console.log(`[-] انقطع اتصال المستخدم: ${socket.id}`);
+    console.log('مستخدم غادر');
   });
 });
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`🛡️ خادم Lianix Zino التكتيكي يعمل على المنفذ ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
