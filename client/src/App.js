@@ -9,36 +9,51 @@ const socket = io({
 
 const SYSTEM_AUTO_KEY = 'LIANIX_PREMIUM_E2E_KEY_2026';
 
-// رسم دقيق لأيقونة التلفون الأرضي الثمانيني (1980s Retro Phone)
-const Retro80sPhoneLogo = () => (
-  <svg width="46" height="46" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-    {/* قاعدة الهاتف الكلاسيكي */}
-    <rect x="20" y="45" width="60" height="40" rx="10" fill="#0F172A" stroke="#00F0FF" strokeWidth="2.5"/>
-    {/* القرص الدائري للأرقام */}
-    <circle cx="50" cy="65" r="13" fill="#1E293B" stroke="#00A884" strokeWidth="2"/>
-    <circle cx="50" cy="57" r="2.5" fill="#00F0FF"/>
-    <circle cx="58" cy="65" r="2.5" fill="#00F0FF"/>
-    <circle cx="50" cy="73" r="2.5" fill="#00F0FF"/>
-    <circle cx="42" cy="65" r="2.5" fill="#00F0FF"/>
-    {/* السماعة الثمانينية المرفوعة فوق الهيكل */}
-    <path d="M 15 32 Q 50 12 85 32 Q 90 42 78 40 Q 60 28 40 28 Q 20 28 12 40 Q 2 42 15 32 Z" fill="#00A884" stroke="#00F0FF" strokeWidth="1.5"/>
-    {/* السلك الحلزوني الأيقوني */}
-    <path d="M 22 75 Q 14 84 22 88 Q 28 84 22 78" stroke="#00F0FF" strokeWidth="2.5" fill="none"/>
-    {/* لمبة البيان الخضراء */}
-    <circle cx="72" cy="52" r="3" fill="#10B981"/>
+// رسم دقيق لأيقونة التلفون المحمول الثمانيني (1980s Retro Brick Mobile Phone)
+const RetroBrickPhoneLogo = () => (
+  <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    {/* جسم الهاتف المحمول الثمانيني */}
+    <rect x="32" y="20" width="36" height="72" rx="6" fill="#0B0F19" stroke="#00F0FF" strokeWidth="2.5"/>
+    {/* الهوائي العلوي (Antenna) */}
+    <rect x="40" y="4" width="4" height="16" rx="1" fill="#0B0F19" stroke="#00F0FF" strokeWidth="1.5"/>
+    {/* موجات الإشارة اللاسلكية */}
+    <path d="M 32 8 Q 42 2 52 8" stroke="#00A884" strokeWidth="2" fill="none" strokeLinecap="round"/>
+    {/* شاشة LED المضيئة */}
+    <rect x="37" y="28" width="26" height="16" rx="3" fill="#020617" stroke="#00F0FF" strokeWidth="1.2"/>
+    <text x="50" y="39" fill="#00F0FF" fontSize="5.5" fontWeight="900" textAnchor="middle" fontFamily="monospace" letterSpacing="0.5">LIANIX</text>
+    {/* السماعة العلوية */}
+    <line x1="42" y1="24" x2="58" y2="24" stroke="#00F0FF" strokeWidth="1.5" strokeLinecap="round"/>
+    {/* أزرار المفاتيح (3x4) */}
+    <rect x="37" y="48" width="6" height="4" rx="1" fill="#1E293B"/>
+    <rect x="47" y="48" width="6" height="4" rx="1" fill="#1E293B"/>
+    <rect x="57" y="48" width="6" height="4" rx="1" fill="#1E293B"/>
+
+    <rect x="37" y="55" width="6" height="4" rx="1" fill="#1E293B"/>
+    <rect x="47" y="55" width="6" height="4" rx="1" fill="#1E293B"/>
+    <rect x="57" y="55" width="6" height="4" rx="1" fill="#1E293B"/>
+
+    <rect x="37" y="62" width="6" height="4" rx="1" fill="#1E293B"/>
+    <rect x="47" y="62" width="6" height="4" rx="1" fill="#1E293B"/>
+    <rect x="57" y="62" width="6" height="4" rx="1" fill="#1E293B"/>
+
+    <rect x="37" y="69" width="6" height="4" rx="1" fill="#1E293B"/>
+    <rect x="47" y="69" width="6" height="4" rx="1" fill="#1E293B"/>
+    <rect x="57" y="69" width="6" height="4" rx="1" fill="#1E293B"/>
+    {/* أزرار العمليات الملونة */}
+    <rect x="37" y="77" width="11" height="6" rx="1.5" fill="#00A884"/>
+    <rect x="52" y="77" width="11" height="6" rx="1.5" fill="#2563EB"/>
+    {/* المايكروفون */}
+    <circle cx="50" cy="87" r="1.5" fill="#00F0FF"/>
   </svg>
 );
 
 export default function App() {
-  // هوية المستخدم عبر رقم الهاتف
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem('lianix_phone_profile');
     return saved ? JSON.parse(saved) : null;
   });
 
   const [regPhone, setRegPhone] = useState('');
-
-  // قائمة جهات الاتصال والمحادثات
   const [contacts, setContacts] = useState(() => {
     const saved = localStorage.getItem('lianix_phone_contacts');
     return saved ? JSON.parse(saved) : [];
@@ -54,10 +69,10 @@ export default function App() {
   const chatEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
+  // إقحام حركة الشفاه النابضة للإيموجي المتكلم
   useEffect(() => {
-    // إضافة كود أنيميشن حركة الشفاه للإيموجي المتكلم
-    const styleSheet = document.createElement("style");
-    styleSheet.type = "text/css";
+    const styleSheet = document.createElement('style');
+    styleSheet.type = 'text/css';
     styleSheet.innerText = `
       @keyframes talkLipAnimation {
         0% { transform: scaleY(1) scaleX(1); }
@@ -86,14 +101,13 @@ export default function App() {
     localStorage.setItem('lianix_phone_contacts', JSON.stringify(contacts));
   }, [contacts]);
 
-  // الربط التلقائي عبر رابط الدعوة
+  // الربط المباشر برابط الهاتف الدعائي
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
     const invitePhone = queryParams.get('invitePhone');
 
     if (invitePhone && currentUser && invitePhone !== currentUser.phone) {
       const roomId = [currentUser.phone, invitePhone].sort().join('_ROOM_');
-      
       const newContact = {
         id: roomId,
         phone: invitePhone,
@@ -193,8 +207,7 @@ export default function App() {
     if (!currentUser) return;
     const baseUrl = window.location.origin + window.location.pathname;
     const inviteUrl = `${baseUrl}?invitePhone=${encodeURIComponent(currentUser.phone)}`;
-    
-    const whatsappText = `مرحباً! أضفتك على منصة ليانكس المشفرة. اضغط على الرابط للتحدث معي مباشرة عبر الهوية الثمانينية:\n${inviteUrl}`;
+    const whatsappText = `مرحباً! أضفتك على منصة ليانكس المشفرة. اضغط على الرابط للتحدث معي مباشرة:\n${inviteUrl}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappText)}`, '_blank');
   };
 
@@ -245,18 +258,20 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
-  // الشاشة الأولى: التفعيل السريع برقم الهاتف
+  // شاشة التفعيل الفخمة
   if (!currentUser) {
     return (
       <div style={styles.appShell}>
         <div style={styles.setupCard}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '15px' }}>
-            <Retro80sPhoneLogo />
+            <RetroBrickPhoneLogo />
           </div>
-          <h2 style={styles.brandTitle}>
-            LIANIX <span style={{ fontSize: '13px', color: '#00F0FF' }}>| ليانكس</span>
-          </h2>
-          <p style={{ fontSize: '12px', color: '#94A3B8', margin: '8px 0 22px 0' }}>منصة الاتصال المشفرة بالهوية الثمانينية الفخمة. أدخل رقم هاتفك لبدء التفعيل:</p>
+          <h1 style={styles.brandTitleText}>
+            LIANIX <span style={{ fontSize: '13px', color: '#00F0FF', fontWeight: 'bold' }}>| ليانكس</span>
+          </h1>
+          <p style={{ fontSize: '12px', color: '#94A3B8', margin: '10px 0 24px 0', lineHeight: '1.5' }}>
+            منصة الاتصال المشفرة بالهوية الثمانينية الفخمة. أدخل رقم هاتفك لبدء الاستخدام:
+          </p>
           
           <form onSubmit={handleRegister}>
             <input 
@@ -279,15 +294,14 @@ export default function App() {
 
   return (
     <div style={styles.appShell}>
-      {/* ---------------- 1. شاشة المحادثات الرئيسية ---------------- */}
+      {/* 1. قائمة المحادثات الرئيسية */}
       {view === 'list' ? (
         <div style={styles.mobileScreen}>
-          {/* هيدر ليانكس الفخم والمهيب */}
           <div style={styles.headerBar}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Retro80sPhoneLogo />
+              <RetroBrickPhoneLogo />
               <div>
-                <h1 style={styles.brandTitle}>
+                <h1 style={styles.brandTitleText}>
                   LIANIX <span style={{ fontSize: '12px', color: '#00F0FF' }}>| ليانكس</span>
                 </h1>
                 <span style={{ fontSize: '10px', color: '#94A3B8' }}>رقمك: {currentUser.phone}</span>
@@ -298,11 +312,10 @@ export default function App() {
             </span>
           </div>
 
-          {/* بنر الدعوة التلقائية عبر واتساب */}
           <div style={styles.inviteBanner} onClick={handleInviteViaWhatsApp}>
             <div>
               <span style={{ fontWeight: 'bold', color: '#FFF', fontSize: '13px' }}>📲 دعوة صديق للربط المباشر</span>
-              <span style={{ fontSize: '10px', color: '#CBD5E1', display: 'block' }}>إرسال رابط الدعوة الثمانيني للتحدث فوراً</span>
+              <span style={{ fontSize: '10px', color: '#CBD5E1', display: 'block' }}>إرسال رابط الدعوة للتحدث فوراً</span>
             </div>
             <button style={styles.inviteBtn}>إرسال</button>
           </div>
@@ -312,8 +325,8 @@ export default function App() {
           <div style={styles.listContainer}>
             {contacts.length === 0 ? (
               <div style={styles.emptyWelcome}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
-                  <Retro80sPhoneLogo />
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                  <RetroBrickPhoneLogo />
                 </div>
                 <p style={{ fontSize: '14px', color: '#F8FAFC', margin: 0, fontWeight: 'bold' }}>لا توجد محادثات نشطة</p>
                 <p style={{ fontSize: '11px', color: '#94A3B8', marginTop: '6px' }}>اضغط على "دعوة صديق" في الأعلى لإرسال رابط المنصة والبدء فوراً.</p>
@@ -325,7 +338,7 @@ export default function App() {
                   onClick={() => { setActiveChat(c); setView('chat'); }}
                   style={styles.contactCard}>
                   <div style={styles.avatarCircle}>
-                    📞
+                    📱
                   </div>
                   <div style={{ flex: 1, overflow: 'hidden' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
@@ -342,15 +355,14 @@ export default function App() {
           </div>
         </div>
       ) : (
-        /* ---------------- 2. شاشة المحادثة المفتوحة ---------------- */
+        /* 2. شاشة المحادثة المفتوحة */
         <div style={styles.mobileScreen}>
-          {/* هيدر المحادثة الفخم */}
           <div style={styles.chatHeader}>
             <button onClick={() => setView('list')} style={styles.backArrow} title="رجوع">
               ➔
             </button>
             <div style={styles.avatarSmall}>
-              📞
+              📱
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 'bold', color: '#F8FAFC', fontSize: '15px' }}>{activeChat.phone}</div>
@@ -387,10 +399,10 @@ export default function App() {
               ))
             )}
 
-            {/* الإيموجي المتكلم اللحظي المبتكر عند كتابة الرسالة */}
+            {/* الإيموجي المتكلم اللحظي عند كتابة الرسالة */}
             {isFriendTyping && (
               <div style={styles.talkingContainer}>
-                <span className="talking-lip-emoji">🗣️</span>
+                <span className="talking-lip-emoji" style={{ fontSize: '20px' }}>🗣️</span>
                 <span style={{ fontSize: '11px', color: '#00F0FF', fontWeight: 'bold' }}>
                   يتكلم ويكتب الآن... 💬
                 </span>
@@ -401,7 +413,7 @@ export default function App() {
           </div>
 
           <form onSubmit={handleSendMessage} style={styles.inputBar}>
-            <label style={styles.attachBtn} title="إرفاق ميديا مشفرة">
+            <label style={styles.attachBtn} title="إرفاق ميديا">
               📷
               <input type="file" accept="image/*,video/*" onChange={handleFileUpload} style={{ display: 'none' }} />
             </label>
@@ -423,8 +435,8 @@ export default function App() {
 // التنسيقات الفخمة بلمسات النيون والألوان التكتيكية
 const styles = {
   appShell: { width: '100vw', height: '100vh', background: '#0B0F19', fontFamily: 'system-ui, sans-serif', direction: 'rtl', display: 'flex', justifyContent: 'center', alignItems: 'center' },
-  setupCard: { background: '#0F172A', padding: '28px', borderRadius: '24px', width: '320px', textAlign: 'center', border: '1px solid #00F0FF', boxShadow: '0 12px 40px rgba(0,240,255,0.15)' },
-  brandTitle: { margin: 0, fontSize: '20px', fontWeight: '900', color: '#F8FAFC', letterSpacing: '1px' },
+  setupCard: { background: '#0F172A', padding: '30px 24px', borderRadius: '24px', width: '310px', textAlign: 'center', border: '1px solid #00F0FF', boxShadow: '0 12px 40px rgba(0,240,255,0.18)' },
+  brandTitleText: { margin: 0, fontSize: '21px', fontWeight: '900', color: '#F8FAFC', letterSpacing: '1px', textShadow: '0 0 10px rgba(0,240,255,0.3)' },
   setupInput: { width: '100%', padding: '12px', margin: '8px 0', borderRadius: '10px', border: '1px solid #334155', background: '#020617', color: '#FFF', fontSize: '13px', boxSizing: 'border-box', outline: 'none' },
   setupBtn: { width: '100%', padding: '12px', background: '#00A884', color: '#FFF', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', marginTop: '10px', boxShadow: '0 4px 15px rgba(0,168,132,0.3)' },
   mobileScreen: { width: '100%', maxWidth: '430px', height: '100%', display: 'flex', flexDirection: 'column', background: '#020617', position: 'relative' },
@@ -441,10 +453,4 @@ const styles = {
   backArrow: { background: 'none', border: 'none', color: '#00F0FF', fontSize: '20px', cursor: 'pointer', padding: '0 4px' },
   chatBox: { flex: 1, overflowY: 'auto', padding: '12px', background: '#020617' },
   emptyBox: { textAlign: 'center', marginTop: '100px', background: '#0F172A', padding: '20px', borderRadius: '16px', border: '1px solid #1E293B' },
-  msgBubble: { maxWidth: '78%', padding: '8px 12px', borderRadius: '12px', position: 'relative', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', border: '1px solid #334155' },
-  mediaImg: { maxWidth: '100%', borderRadius: '8px', maxHeight: '200px', marginTop: '4px' },
-  msgTime: { fontSize: '9px', color: '#94A3B8', display: 'block', textAlign: 'left', marginTop: '3px' },
-  talkingContainer: { display: 'flex', alignItems: 'center', gap: '8px', background: '#0F172A', padding: '6px 12px', borderRadius: '20px', width: 'fit-content', border: '1px solid #00F0FF', margin: '8px 0' },
-  inputBar: { display: 'flex', gap: '8px', padding: '10px 12px', background: '#0F172A', alignItems: 'center', borderTop: '1px solid #1E293B' },
-  attachBtn: { background: '#1E293B', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '16px', border: '1px solid #334155' },
-  textInput: { flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #334155', background: '#020617', color: '#F8FA
+  msgBubble: { maxWidth: '78%', padding: '8px 12px', borderRadius: '12px', position: 'relative', boxS
