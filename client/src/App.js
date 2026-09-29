@@ -2,11 +2,8 @@ import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import CryptoJS from 'crypto-js';
 
-// الاتصال المباشر بمصدر السيرفر الذي يخدم الصفحة تلقائياً
-const socket = io('https://lianix-zino-1.onrender.com', {
-  transports: ['polling', 'websocket'],
-  autoConnect: true
-});
+// الاتصال بنفس سيرفر الموقع تلقائياً دون تعارض
+const socket = io();
 
 export default function App() {
   const [secretKey, setSecretKey] = useState('ZINO2026');
@@ -15,11 +12,18 @@ export default function App() {
   const [isConnected, setIsConnected] = useState(socket.connected);
 
   useEffect(() => {
-    // متابعة حالة الاتصال الحية بالسيرفر
-    socket.on('connect', () => setIsConnected(true));
-    socket.on('disconnect', () => setIsConnected(false));
+    // 1. فحص الاتصال القائم فوراً إذا كان مكتصلاً مسبقاً
+    if (socket.connected) {
+      setIsConnected(true);
+    }
 
-    // استقبال الرسائل القادمة وفك تشفيرها
+    const onConnect = () => setIsConnected(true);
+    const onDisconnect = () => setIsConnected(false);
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+
+    // 2. استقبال الرسائل القادمة وفك التشفير
     socket.on('receive_message', (data) => {
       try {
         const bytes = CryptoJS.AES.decrypt(data.encryptedPayload, secretKey);
@@ -41,8 +45,8 @@ export default function App() {
     });
 
     return () => {
-      socket.off('connect');
-      socket.off('disconnect');
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
       socket.off('receive_message');
     };
   }, [secretKey]);
@@ -52,20 +56,20 @@ export default function App() {
     if (!message.trim()) return;
 
     try {
-      // 1. تشفير النص
+      // 1. تشفير الرسالة بتحويلها لنص صريح
       const encrypted = CryptoJS.AES.encrypt(message, secretKey).toString();
 
-      // 2. إرسال الرسالة عبر السوكيت
+      // 2. بث الرسالة عبر السوكيت
       socket.emit('send_message', {
         sender: 'أنت',
         encryptedPayload: encrypted
       });
 
-      // 3. عرض الرسالة في شاشتك فوراً
+      // 3. إضافة الرسالة فوراً لشاشة المرسل
       setChat((prev) => [...prev, { sender: 'أنت', text: message }]);
       setMessage('');
     } catch (err) {
-      alert('حدث خطأ في عملية التشفير أو الإرسال');
+      alert('حدث خطأ أثناء التشفير أو الإرسال');
     }
   };
 
@@ -128,4 +132,4 @@ export default function App() {
       </form>
     </div>
   );
-                                                                                   }
+}
