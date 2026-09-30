@@ -58,14 +58,12 @@ export default function App() {
   const chatEndRef = useRef(null);
   const typingTimer = useRef(null);
 
-  // أنيميشن حالة الكتابة
   useEffect(() => {
     const style = document.createElement('style');
     style.innerText = `@keyframes talkAnim { 0%,100%{transform:scaleY(1);} 50%{transform:scaleY(1.4) translateY(-2px);} } .talking-emoji { display:inline-block; animation:talkAnim 0.3s infinite ease-in-out; }`;
     document.head.appendChild(style);
   }, []);
 
-  // التقاط رابط الدعوة وحفظه فوراً في الذاكرة المحلية حتى قبل تسجيل الدخول وتنظيف الرابط
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const inviteToken = params.get('secureToken');
@@ -76,12 +74,10 @@ export default function App() {
         token: inviteToken,
         displayName: inviteDisplay ? decodeURIComponent(inviteDisplay) : 'جهة اتصال مشفرة'
       }));
-      // تنظيف الـ URL لكي لا يتكرر القلق أو الضياع
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
 
-  // إدارة الاتصال ومؤشر الحالة (متصل / غير متصل) بشكل ذكي
   useEffect(() => {
     const updateConnectionStatus = () => {
       setIsConnected(socket.connected);
@@ -123,7 +119,6 @@ export default function App() {
     };
   }, [currentUser]);
 
-  // مزامنة المستخدم وحفظه وتسجيله في الـ Socket
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('lx_user_v3', JSON.stringify(currentUser));
@@ -133,12 +128,10 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // حفظ جهات الاتصال
   useEffect(() => {
     localStorage.setItem('lx_contacts_v3', JSON.stringify(contacts));
   }, [contacts]);
 
-  // معالجة الدعوة المعلقة وفعل الدخول المباشر للمحادثة فور تسجيل الدخول أو توفره
   useEffect(() => {
     if (!currentUser) return;
 
@@ -146,7 +139,7 @@ export default function App() {
     if (pendingStr) {
       try {
         const targetInvite = JSON.parse(pendingStr);
-        localStorage.removeItem('lx_pending_invite'); // مسحها كي لا تفتح مرة أخرى بلا إذن
+        localStorage.removeItem('lx_pending_invite');
 
         if (targetInvite && targetInvite.token && targetInvite.token !== currentUser.token) {
           const roomId = [currentUser.token, targetInvite.token].sort().join('_SECURE_ROOM_');
@@ -171,12 +164,10 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // التمرير التلقائي للأسفل عند وصول رسائل جديدة
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, activeChat, isTyping]);
 
-  // الانضمام لغرفة المحادثة النشطة عبر الـ Socket
   useEffect(() => {
     if (activeChat && socket.connected) {
       socket.emit('join_chat_room', activeChat.id);
@@ -420,4 +411,5 @@ const styles = {
   inputBar: { display: 'flex', gap: '6px', padding: '10px 12px', background: '#0F172A', alignItems: 'center', borderTop: '1px solid #1E293B' },
   attach: { background: '#1E293B', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '15px', border: '1px solid #334155' },
   mainInput: { flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #334155', background: '#020617', color: '#F8FAFC', outline: 'none', fontSize: '13px' },
-  sendBtn: { padding: '1
+  sendBtn: { padding: '10px 16px', background: '#2563EB', color: '#FFF', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }
+};
