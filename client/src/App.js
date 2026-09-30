@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import CryptoJS from 'crypto-js';
 
-// الاتصال التلقائي بنفس دومين المنصة الحالي
 const socket = io({
   transports: ['websocket', 'polling'],
   secure: true,
@@ -32,14 +31,24 @@ const BrickPhoneIcon = () => (
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem('lx_user_v3');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('lx_user_v3');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
+  
   const [phoneInput, setPhoneInput] = useState('');
   const [contacts, setContacts] = useState(() => {
-    const saved = localStorage.getItem('lx_contacts_v3');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('lx_contacts_v3');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
+  
   const [activeChat, setActiveChat] = useState(null);
   const [view, setView] = useState('list');
   const [messages, setMessages] = useState({});
@@ -49,59 +58,45 @@ export default function App() {
   const chatEndRef = useRef(null);
   const typingTimer = useRef(null);
 
+  // أنيميشن حالة الكتابة
   useEffect(() => {
     const style = document.createElement('style');
     style.innerText = `@keyframes talkAnim { 0%,100%{transform:scaleY(1);} 50%{transform:scaleY(1.4) translateY(-2px);} } .talking-emoji { display:inline-block; animation:talkAnim 0.3s infinite ease-in-out; }`;
     document.head.appendChild(style);
   }, []);
 
-  useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('lx_user_v3', JSON.stringify(currentUser));
-      socket.emit('register_user', currentUser);
-    }
-  }, [currentUser]);
-
-  useEffect(() => {
-    localStorage.setItem('lx_contacts_v3', JSON.stringify(contacts));
-  }, [contacts]);
-
+  // التقاط رابط الدعوة وحفظه فوراً في الذاكرة المحلية حتى قبل تسجيل الدخول وتنظيف الرابط
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const inviteToken = params.get('secureToken');
-    const inviteDisplay = params.get('displayPhone') || 'جهة اتصال مشفرة';
+    const inviteDisplay = params.get('displayPhone');
     
-    if (inviteToken && currentUser && inviteToken !== currentUser.token) {
-      const roomId = [currentUser.token, inviteToken].sort().join('_SECURE_ROOM_');
-      const newC = { id: roomId, token: inviteToken, displayName: inviteDisplay, lastMsg: 'محادثة آمنة جديدة', time: 'الآن' };
-      
-      setContacts(prev => {
-        if (prev.find(c => c.token === inviteToken)) return prev;
-        return [newC, ...prev];
-      });
-      setActiveChat(newC);
-      setView('chat');
+    if (inviteToken) {
+      localStorage.setItem('lx_pending_invite', JSON.stringify({
+        token: inviteToken,
+        displayName: inviteDisplay ? decodeURIComponent(inviteDisplay) : 'جهة اتصال مشفرة'
+      }));
+      // تنظيف الـ URL لكي لا يتكرر القلق أو الضياع
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, [currentUser]);
+  }, []);
 
+  // إدارة الاتصال ومؤشر الحالة (متصل / غير متصل) بشكل ذكي
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, activeChat, isTyping]);
+    const updateConnectionStatus = () => {
+      setIsConnected(socket.connected);
+      if (socket.connected && currentUser) {
+        socket.emit('register_user', currentUser);
+      }
+    };
 
-  useEffect(() => {
-    if (activeChat) socket.emit('join_chat_room', activeChat.id);
-  }, [activeChat]);
+    updateConnectionStatus();
 
-  useEffect(() => {
-    setIsConnected(socket.connected);
-    const onConn = () => { setIsConnected(true); if (currentUser) socket.emit('register_user', currentUser); };
-    const onDis = () => setIsConnected(false);
-    
-    socket.on('connect', onConn);
-    socket.on('disconnect', onDis);
+    socket.on('connect', updateConnectionStatus);
+    socket.on('disconnect', () => setIsConnected(false));
     socket.on('user_typing', () => setIsTyping(true));
     socket.on('user_stop_typing', () => setIsTyping(false));
-    
+
     socket.on('receive_private_message', (data) => {
       if (!data?.encryptedPayload) return;
       try {
@@ -110,52 +105,133 @@ export default function App() {
         const isMe = data.senderToken === currentUser?.token;
         if (text) {
           const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          const newMsg = { id: Date.now(), text, isMe, time, mediaType: data.mediaType || 'text' };
+          const newMsg = { id: Date.now() + Math.random(), text, isMe, time, mediaType: data.mediaType || 'text' };
           setMessages(prev => ({ ...prev, [data.roomId]: [...(prev[data.roomId] || []), newMsg] }));
           setContacts(prev => prev.map(c => c.id === data.roomId ? { ...c, lastMsg: text, time } : c));
         }
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        console.error(e);
+      }
     });
 
     return () => {
-      socket.off('connect', onConn);
-      socket.off('disconnect', onDis);
+      socket.off('connect');
+      socket.off('disconnect');
       socket.off('user_typing');
       socket.off('user_stop_typing');
       socket.off('receive_private_message');
     };
   }, [currentUser]);
 
+  // مزامنة المستخدم وحفظه وتسجيله في الـ Socket
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('lx_user_v3', JSON.stringify(currentUser));
+      if (socket.connected) {
+        socket.emit('register_user', currentUser);
+      }
+    }
+  }, [currentUser]);
+
+  // حفظ جهات الاتصال
+  useEffect(() => {
+    localStorage.setItem('lx_contacts_v3', JSON.stringify(contacts));
+  }, [contacts]);
+
+  // معالجة الدعوة المعلقة وفعل الدخول المباشر للمحادثة فور تسجيل الدخول أو توفره
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const pendingStr = localStorage.getItem('lx_pending_invite');
+    if (pendingStr) {
+      try {
+        const targetInvite = JSON.parse(pendingStr);
+        localStorage.removeItem('lx_pending_invite'); // مسحها كي لا تفتح مرة أخرى بلا إذن
+
+        if (targetInvite && targetInvite.token && targetInvite.token !== currentUser.token) {
+          const roomId = [currentUser.token, targetInvite.token].sort().join('_SECURE_ROOM_');
+          const newC = {
+            id: roomId,
+            token: targetInvite.token,
+            displayName: targetInvite.displayName,
+            lastMsg: 'محادثة آمنة جديدة',
+            time: 'الآن'
+          };
+
+          setContacts(prev => {
+            if (prev.find(c => c.token === targetInvite.token)) return prev;
+            return [newC, ...prev];
+          });
+          setActiveChat(newC);
+          setView('chat');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, [currentUser]);
+
+  // التمرير التلقائي للأسفل عند وصول رسائل جديدة
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, activeChat, isTyping]);
+
+  // الانضمام لغرفة المحادثة النشطة عبر الـ Socket
+  useEffect(() => {
+    if (activeChat && socket.connected) {
+      socket.emit('join_chat_room', activeChat.id);
+    }
+  }, [activeChat, isConnected]);
+
   const handleLogin = (e) => {
     e.preventDefault();
     if (phoneInput.trim()) {
       const secureToken = 'sec_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
-      setCurrentUser({ phone: phoneInput.trim(), token: secureToken });
+      const newUser = { phone: phoneInput.trim(), token: secureToken };
+      setCurrentUser(newUser);
+      if (socket.connected) {
+        socket.emit('register_user', newUser);
+      }
     }
   };
 
   const handleInvite = () => {
     if (!currentUser) return;
     const url = `${window.location.origin}${window.location.pathname}?secureToken=${currentUser.token}&displayPhone=${encodeURIComponent(currentUser.phone)}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent('انضم إلى قناة الاتصال الآمنة الخاصة بي عبر ليانكس:\n' + url)}`, '_blank');
+    const whatsappText = `انضم إلى قناة الاتصال الآمنة الخاصة بي عبر ليانكس:\n${url}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappText)}`, '_blank');
   };
 
   const handleInputChange = (e) => {
     setInputText(e.target.value);
-    if (activeChat) socket.emit('typing', { roomId: activeChat.id });
+    if (activeChat && socket.connected) {
+      socket.emit('typing', { roomId: activeChat.id });
+    }
     if (typingTimer.current) clearTimeout(typingTimer.current);
     typingTimer.current = setTimeout(() => {
-      if (activeChat) socket.emit('stop_typing', { roomId: activeChat.id });
+      if (activeChat && socket.connected) {
+        socket.emit('stop_typing', { roomId: activeChat.id });
+      }
     }, 1200);
   };
 
   const handleSend = (e) => {
     e.preventDefault();
     if (!inputText.trim() || !activeChat || !currentUser) return;
-    const encryptedPayload = CryptoJS.AES.encrypt(inputText, SYSTEM_KEY).toString();
-    socket.emit('send_private_message', { roomId: activeChat.id, encryptedPayload, senderToken: currentUser.token, mediaType: 'text' });
-    socket.emit('stop_typing', { roomId: activeChat.id });
-    setInputText('');
+    
+    try {
+      const encryptedPayload = CryptoJS.AES.encrypt(inputText, SYSTEM_KEY).toString();
+      socket.emit('send_private_message', {
+        roomId: activeChat.id,
+        encryptedPayload,
+        senderToken: currentUser.token,
+        mediaType: 'text'
+      });
+      socket.emit('stop_typing', { roomId: activeChat.id });
+      setInputText('');
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const handleFile = (e) => {
@@ -163,10 +239,20 @@ export default function App() {
     if (!file || !activeChat || !currentUser) return;
     const mediaType = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : null;
     if (!mediaType) return;
+    
     const reader = new FileReader();
     reader.onload = () => {
-      const encryptedPayload = CryptoJS.AES.encrypt(reader.result, SYSTEM_KEY).toString();
-      socket.emit('send_private_message', { roomId: activeChat.id, encryptedPayload, senderToken: currentUser.token, mediaType });
+      try {
+        const encryptedPayload = CryptoJS.AES.encrypt(reader.result, SYSTEM_KEY).toString();
+        socket.emit('send_private_message', {
+          roomId: activeChat.id,
+          encryptedPayload,
+          senderToken: currentUser.token,
+          mediaType
+        });
+      } catch (e) {
+        console.error(e);
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -179,7 +265,14 @@ export default function App() {
           <h1 style={styles.title}>LIANIX <span style={{ color: '#00F0FF', fontSize: '13px' }}>| ليانكس</span></h1>
           <p style={styles.subText}>ENTER YOUR NUMBER TO SECURE THE LINE</p>
           <form onSubmit={handleLogin}>
-            <input type="tel" placeholder="Phone Number (e.g. 059XXXXXXX)" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} style={styles.input} required />
+            <input 
+              type="tel" 
+              placeholder="Phone Number (e.g. 059XXXXXXX)" 
+              value={phoneInput} 
+              onChange={(e) => setPhoneInput(e.target.value)} 
+              style={styles.input} 
+              required 
+            />
             <button type="submit" style={styles.btnGreen}>CONNECT NOW</button>
           </form>
         </div>
@@ -248,6 +341,9 @@ export default function App() {
               <div style={{ fontWeight: 'bold', color: '#F8FAFC', fontSize: '14px' }}>{activeChat?.displayName || 'محادثة آمنة'}</div>
               <div style={{ fontSize: '10px', color: '#00F0FF' }}>اتصال مشفر برقم الهاتف 🟢</div>
             </div>
+            <span style={{ fontSize: '9px', color: isConnected ? '#10B981' : '#EF4444', fontWeight: 'bold' }}>
+              {isConnected ? '🟢' : '🔴'}
+            </span>
           </div>
 
           <div style={styles.chatBox}>
@@ -284,7 +380,13 @@ export default function App() {
               📷
               <input type="file" accept="image/*,video/*" onChange={handleFile} style={{ display: 'none' }} />
             </label>
-            <input type="text" placeholder="اكتب رسالة مشفرة..." value={inputText} onChange={handleInputChange} style={styles.mainInput} />
+            <input 
+              type="text" 
+              placeholder="اكتب رسالة مشفرة..." 
+              value={inputText} 
+              onChange={handleInputChange} 
+              style={styles.mainInput} 
+            />
             <button type="submit" style={styles.sendBtn}>إرسال</button>
           </form>
         </div>
@@ -318,5 +420,4 @@ const styles = {
   inputBar: { display: 'flex', gap: '6px', padding: '10px 12px', background: '#0F172A', alignItems: 'center', borderTop: '1px solid #1E293B' },
   attach: { background: '#1E293B', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', fontSize: '15px', border: '1px solid #334155' },
   mainInput: { flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid #334155', background: '#020617', color: '#F8FAFC', outline: 'none', fontSize: '13px' },
-  sendBtn: { padding: '10px 16px', background: '#2563EB', color: '#FFF', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }
-};
+  sendBtn: { padding: '1
